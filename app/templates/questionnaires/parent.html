@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}主要家长问卷：{{ student.name }} - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">家长问卷</p>
+      <h1>主要家长问卷：{{ student.name }}</h1>
+      <p class="muted">记录主要家长的沟通信息、家庭资源、目标优先级与当前关注点。</p>
+    </div>
+    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回档案</a>
+  </section>
+
+  <form class="form-panel" method="post">
+    <div class="form-grid">
+      <label>
+        <span>家长姓名</span>
+        <input name="parent_name" value="{{ questionnaire["parent_name"] if questionnaire else "" }}" required>
+      </label>
+      <label>
+        <span>与学生关系</span>
+        <input name="relationship" value="{{ questionnaire["relationship"] if questionnaire else "母亲" }}" required>
+      </label>
+      <label>
+        <span>家长联系方式</span>
+        <input name="parent_phone" type="tel" value="{{ questionnaire["parent_phone"] if questionnaire else "" }}">
+      </label>
+      <label>
+        <span>常用沟通方式</span>
+        <input name="communication_method" value="{{ questionnaire["communication_method"] if questionnaire else "微信" }}">
+      </label>
+      <label>
+        <span>家庭资源</span>
+        <textarea name="family_resources" rows="5">{{ questionnaire["family_resources"] if questionnaire else "" }}</textarea>
+      </label>
+      <label>
+        <span>目标优先级</span>
+        <textarea name="target_priorities" rows="5">{{ questionnaire["target_priorities"] if questionnaire else "" }}</textarea>
+      </label>
+      <label>
+        <span>家长观察</span>
+        <textarea name="parent_observations" rows="5">{{ questionnaire["parent_observations"] if questionnaire else "" }}</textarea>
+      </label>
+      <label>
+        <span>当前担忧</span>
+        <textarea name="current_concerns" rows="5">{{ questionnaire["current_concerns"] if questionnaire else "" }}</textarea>
+      </label>
+      <label>
+        <span>投入意愿</span>
+        <textarea name="investment_willingness" rows="5">{{ questionnaire["investment_willingness"] if questionnaire else "" }}</textarea>
+      </label>
+    </div>
+    <div class="form-actions">
+      <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>
+      <button class="button" type="submit">保存家长问卷</button>
+    </div>
+  </form>
+{% endblock %}

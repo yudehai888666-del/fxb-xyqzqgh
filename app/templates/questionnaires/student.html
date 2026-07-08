@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}学生问卷：{{ student.name }} - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">学生问卷</p>
+      <h1>学生问卷：{{ student.name }}</h1>
+      <p class="muted">记录学生当前适应、学业状态、优势兴趣与未来意向，用于后续规划沟通。</p>
+    </div>
+    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回档案</a>
+  </section>
+
+  <form class="form-panel" method="post">
+    <div class="form-grid">
+      <label>
+        <span>适应情况</span>
+        <textarea name="adaptation_status" rows="5">{{ questionnaire["adaptation_status"] if questionnaire else "" }}</textarea>
+      </label>
+      <label>
+        <span>学业情况</span>
+        <textarea name="academic_status" rows="5">{{ questionnaire["academic_status"] if questionnaire else "" }}</textarea>
+      </label>
+      <label>
+        <span>薄弱科目</span>
+        <textarea name="weak_subjects" rows="5">{{ questionnaire["weak_subjects"] if questionnaire else "" }}</textarea>
+      </label>
+      <label>
+        <span>辅导需求</span>
+        <textarea name="tutoring_needs" rows="5">{{ questionnaire["tutoring_needs"] if questionnaire else "" }}</textarea>
+      </label>
+      <label>
+        <span>兴趣与优势</span>
+        <textarea name="interests_strengths" rows="5">{{ questionnaire["interests_strengths"] if questionnaire else "" }}</textarea>
+      </label>
+      <label>
+        <span>未来意向</span>
+        <textarea name="future_intentions" rows="5">{{ questionnaire["future_intentions"] if questionnaire else "" }}</textarea>
+      </label>
+      <label>
+        <span>动力状态</span>
+        <textarea name="motivation_status" rows="5">{{ questionnaire["motivation_status"] if questionnaire else "" }}</textarea>
+      </label>
+    </div>
+    <div class="form-actions">
+      <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>
+      <button class="button" type="submit">保存学生问卷</button>
+    </div>
+  </form>
+{% endblock %}

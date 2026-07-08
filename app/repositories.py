@@ -101,3 +101,125 @@ def list_parent_contacts(student_id):
         (student_id,),
     ).fetchall()
     return [row_to_parent_contact(row) for row in rows]
+
+
+def save_student_questionnaire(student_id, data):
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO student_questionnaires (
+            student_id, adaptation_status, academic_status, weak_subjects,
+            tutoring_needs, interests_strengths, future_intentions,
+            motivation_status
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(student_id) DO UPDATE SET
+            adaptation_status = excluded.adaptation_status,
+            academic_status = excluded.academic_status,
+            weak_subjects = excluded.weak_subjects,
+            tutoring_needs = excluded.tutoring_needs,
+            interests_strengths = excluded.interests_strengths,
+            future_intentions = excluded.future_intentions,
+            motivation_status = excluded.motivation_status,
+            submitted_at = CURRENT_TIMESTAMP
+        """,
+        (
+            student_id,
+            data.get("adaptation_status", ""),
+            data.get("academic_status", ""),
+            data.get("weak_subjects", ""),
+            data.get("tutoring_needs", ""),
+            data.get("interests_strengths", ""),
+            data.get("future_intentions", ""),
+            data.get("motivation_status", ""),
+        ),
+    )
+    db.commit()
+
+
+def get_student_questionnaire(student_id):
+    return get_db().execute(
+        "SELECT * FROM student_questionnaires WHERE student_id = ?",
+        (student_id,),
+    ).fetchone()
+
+
+def get_or_create_primary_parent(student_id, data):
+    parent = get_db().execute(
+        "SELECT id FROM parent_contacts WHERE student_id = ? ORDER BY id LIMIT 1",
+        (student_id,),
+    ).fetchone()
+    if parent:
+        return parent["id"]
+
+    return create_parent_contact(
+        student_id,
+        {
+            "name": data.get("parent_name", ""),
+            "relationship": data.get("relationship", ""),
+            "phone": data.get("parent_phone", ""),
+            "communication_method": data.get("communication_method", ""),
+            "is_primary_decision_maker": True,
+        },
+    )
+
+
+def save_parent_questionnaire(student_id, data):
+    db = get_db()
+    parent_contact_id = get_or_create_primary_parent(student_id, data)
+    db.execute(
+        """
+        INSERT INTO parent_questionnaires (
+            student_id, parent_contact_id, family_resources, target_priorities,
+            parent_observations, current_concerns, investment_willingness
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(parent_contact_id) DO UPDATE SET
+            student_id = excluded.student_id,
+            family_resources = excluded.family_resources,
+            target_priorities = excluded.target_priorities,
+            parent_observations = excluded.parent_observations,
+            current_concerns = excluded.current_concerns,
+            investment_willingness = excluded.investment_willingness,
+            submitted_at = CURRENT_TIMESTAMP
+        """,
+        (
+            student_id,
+            parent_contact_id,
+            data.get("family_resources", ""),
+            data.get("target_priorities", ""),
+            data.get("parent_observations", ""),
+            data.get("current_concerns", ""),
+            data.get("investment_willingness", ""),
+        ),
+    )
+    db.execute(
+        """
+        UPDATE parent_contacts
+        SET questionnaire_status = '已填写', updated_at = CURRENT_TIMESTAMP
+        WHERE student_id = ? AND id = ?
+        """,
+        (student_id, parent_contact_id),
+    )
+    db.commit()
+
+
+def get_parent_questionnaire(student_id):
+    return get_db().execute(
+        """
+        SELECT
+            pq.*,
+            pc.name AS parent_name,
+            pc.relationship,
+            pc.phone AS parent_phone,
+            pc.communication_method
+        FROM parent_questionnaires pq
+        JOIN parent_contacts pc
+            ON pc.student_id = pq.student_id
+            AND pc.id = pq.parent_contact_id
+        WHERE pq.student_id = ?
+        ORDER BY pq.submitted_at DESC, pq.id DESC
+        LIMIT 1
+        """,
+        (student_id,),
+    ).fetchone()

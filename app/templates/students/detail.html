@@ -30,10 +30,10 @@
 
     <aside class="panel actions-panel">
       <h2>后续工作</h2>
-      <p class="muted">家长问卷、学生问卷和教师沟通纪要将在后续任务接入。</p>
+      <p class="muted">补充学生和主要家长问卷，为后续规划建议准备基础信息。</p>
       <div class="action-list">
-        <span class="button disabled">家长问卷</span>
-        <span class="button disabled">学生问卷</span>
+        <a class="button" href="{{ url_for('questionnaires.parent_questionnaire', student_id=student.id) }}">家长问卷</a>
+        <a class="button" href="{{ url_for('questionnaires.student_questionnaire', student_id=student.id) }}">学生问卷</a>
         <span class="button disabled">教师沟通纪要</span>
       </div>
     </aside>
