@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}学生档案 - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">学生管理</p>
+      <h1>学生档案</h1>
+    </div>
+    <a class="button" href="{{ url_for('students.new') }}">新增学生</a>
+  </section>
+
+  <section class="panel">
+    {% if students %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>年级学期</th>
+              <th>学校</th>
+              <th>专业方向</th>
+              <th>城市</th>
+              <th>服务阶段</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in students %}
+              <tr>
+                <td><a href="{{ url_for('students.detail', student_id=student.id) }}">{{ student.name }}</a></td>
+                <td>{{ student.enrollment_year }} / {{ student.current_term }}</td>
+                <td>{{ student.school }}</td>
+                <td>{{ student.major }}</td>
+                <td>{{ student.city or "-" }}</td>
+                <td>{{ student.service_stage }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty">还没有学生档案。</p>
+    {% endif %}
+  </section>
+{% endblock %}

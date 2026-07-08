@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}新增学生 - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">学生档案</p>
+      <h1>新增学生</h1>
+    </div>
+  </section>
+
+  <form class="form-panel" method="post">
+    <div class="form-grid">
+      <label>
+        <span>姓名</span>
+        <input name="name" required>
+      </label>
+      <label>
+        <span>性别</span>
+        <input name="gender" required>
+      </label>
+      <label>
+        <span>入学年份</span>
+        <input name="enrollment_year" type="number" min="2000" max="2100" required>
+      </label>
+      <label>
+        <span>当前学期</span>
+        <input name="current_term" required>
+      </label>
+      <label>
+        <span>学校</span>
+        <input name="school" required>
+      </label>
+      <label>
+        <span>学院</span>
+        <input name="college">
+      </label>
+      <label>
+        <span>专业方向</span>
+        <input name="major" required>
+      </label>
+      <label>
+        <span>城市</span>
+        <input name="city">
+      </label>
+      <label>
+        <span>联系电话</span>
+        <input name="phone" type="tel">
+      </label>
+      <label>
+        <span>负责老师</span>
+        <input name="responsible_teacher">
+      </label>
+    </div>
+    <div class="form-actions">
+      <a class="button secondary" href="{{ url_for('students.list_view') }}">取消</a>
+      <button class="button" type="submit">保存学生</button>
+    </div>
+  </form>
+{% endblock %}
