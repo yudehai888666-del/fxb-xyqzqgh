@@ -1,7 +1,6 @@
 import pytest
 
 from app import create_app
-from app.db import init_db
 
 
 @pytest.fixture
@@ -13,8 +12,6 @@ def app(tmp_path):
             "UPLOAD_DIR": tmp_path / "uploads",
         }
     )
-    with app.app_context():
-        init_db()
     return app
 
 

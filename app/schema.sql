@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS parent_contacts (
     is_primary_decision_maker INTEGER NOT NULL DEFAULT 1,
     questionnaire_status TEXT NOT NULL DEFAULT '未填写',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(student_id, id)
 );
 
 CREATE TABLE IF NOT EXISTS student_questionnaires (
@@ -52,7 +53,9 @@ CREATE TABLE IF NOT EXISTS parent_questionnaires (
     parent_observations TEXT NOT NULL DEFAULT '',
     current_concerns TEXT NOT NULL DEFAULT '',
     investment_willingness TEXT NOT NULL DEFAULT '',
-    submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id, parent_contact_id)
+        REFERENCES parent_contacts(student_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS materials (
