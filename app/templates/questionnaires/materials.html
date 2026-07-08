@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}材料与免责：{{ student.name }} - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">材料与免责</p>
+      <h1>材料与免责：{{ student.name }}</h1>
+    </div>
+    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回档案</a>
+  </section>
+
+  {% if error %}
+    <section class="panel">
+      <p class="empty">{{ error }}</p>
+    </section>
+  {% endif %}
+
+  <section class="detail-grid">
+    <form class="form-panel" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="upload">
+      <h2>上传材料</h2>
+      <div class="form-grid">
+        <label>
+          <span>上传人类型</span>
+          <select name="uploader_type" required>
+            <option value="老师">老师</option>
+            <option value="学生">学生</option>
+            <option value="家长">家长</option>
+          </select>
+        </label>
+        <label>
+          <span>材料分类</span>
+          <input name="category" value="其他材料">
+        </label>
+        <label>
+          <span>材料文件</span>
+          <input name="material" type="file" required>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button class="button" type="submit">上传材料</button>
+      </div>
+    </form>
+
+    <form class="form-panel" method="post">
+      <input type="hidden" name="action" value="disclaimer">
+      <h2>免责确认</h2>
+      <div class="form-grid">
+        <label>
+          <span>确认人类型</span>
+          <select name="signer_type" required>
+            <option value="家长">家长</option>
+            <option value="学生">学生</option>
+            <option value="老师代录">老师代录</option>
+          </select>
+        </label>
+        <label>
+          <span>确认人姓名</span>
+          <input name="signer_name" required>
+        </label>
+        <label>
+          <span>确认原因</span>
+          <textarea name="reason" rows="5" required>当前未上传完整关键材料，规划基于已填写信息和已上传材料生成，不构成具体结果承诺。</textarea>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button class="button" type="submit">确认免责</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>已上传材料</h2>
+    </div>
+    {% if materials %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>文件名</th>
+              <th>分类</th>
+              <th>上传人</th>
+              <th>上传时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for material in materials %}
+              <tr>
+                <td>{{ material["original_filename"] }}</td>
+                <td>{{ material["category"] }}</td>
+                <td>{{ material["uploader_type"] }}</td>
+                <td>{{ material["uploaded_at"] }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty">暂无上传材料。</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>免责记录</h2>
+    </div>
+    {% if disclaimers %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>确认人</th>
+              <th>类型</th>
+              <th>原因</th>
+              <th>确认时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for disclaimer in disclaimers %}
+              <tr>
+                <td>{{ disclaimer["signer_name"] }}</td>
+                <td>{{ disclaimer["signer_type"] }}</td>
+                <td>{{ disclaimer["reason"] }}</td>
+                <td>{{ disclaimer["confirmed_at"] }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty">暂无免责记录。</p>
+    {% endif %}
+  </section>
+{% endblock %}

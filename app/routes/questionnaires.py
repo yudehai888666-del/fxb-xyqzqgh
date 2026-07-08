@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, redirect, render_template, request, url_for
 
 from app import repositories
+from app.services.uploads import save_upload
 
 questionnaires_bp = Blueprint("questionnaires", __name__, url_prefix="/students/<int:student_id>")
 
@@ -43,4 +44,48 @@ def parent_questionnaire(student_id):
         student=student,
         questionnaire=questionnaire,
         parent_contact=parent_contact,
+    )
+
+
+@questionnaires_bp.route("/materials", methods=("GET", "POST"))
+def materials(student_id):
+    student = require_student(student_id)
+    error = None
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "upload":
+            material = request.files.get("material")
+            if material and material.filename:
+                try:
+                    stored_filename = save_upload(student_id, material)
+                except ValueError as exc:
+                    error = str(exc)
+                else:
+                    repositories.create_material(
+                        student_id,
+                        {
+                            "uploader_type": request.form.get("uploader_type", ""),
+                            "category": request.form.get("category", "其他材料"),
+                            "original_filename": material.filename,
+                            "stored_filename": stored_filename,
+                        },
+                    )
+        elif action == "disclaimer":
+            repositories.confirm_disclaimer(
+                student_id,
+                {
+                    "signer_type": request.form.get("signer_type", ""),
+                    "signer_name": request.form.get("signer_name", ""),
+                    "reason": request.form.get("reason", ""),
+                },
+            )
+            return redirect(url_for("questionnaires.materials", student_id=student_id))
+
+    return render_template(
+        "questionnaires/materials.html",
+        student=student,
+        materials=repositories.list_materials(student_id),
+        disclaimers=repositories.list_disclaimers(student_id),
+        error=error,
     )

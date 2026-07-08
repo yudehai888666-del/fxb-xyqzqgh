@@ -34,6 +34,7 @@
       <div class="action-list">
         <a class="button" href="{{ url_for('questionnaires.parent_questionnaire', student_id=student.id) }}">家长问卷</a>
         <a class="button" href="{{ url_for('questionnaires.student_questionnaire', student_id=student.id) }}">学生问卷</a>
+        <a class="button" href="{{ url_for('questionnaires.materials', student_id=student.id) }}">材料与免责</a>
         <span class="button disabled">教师沟通纪要</span>
       </div>
     </aside>

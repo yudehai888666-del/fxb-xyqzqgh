@@ -251,3 +251,68 @@ def get_parent_questionnaire(student_id):
         """,
         (student_id,),
     ).fetchone()
+
+
+def create_material(student_id, data):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO materials (
+            student_id, uploader_type, original_filename, stored_filename, category
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            student_id,
+            data["uploader_type"],
+            data["original_filename"],
+            data["stored_filename"],
+            data.get("category", "其他材料"),
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def list_materials(student_id):
+    return get_db().execute(
+        """
+        SELECT *
+        FROM materials
+        WHERE student_id = ?
+        ORDER BY uploaded_at DESC, id DESC
+        """,
+        (student_id,),
+    ).fetchall()
+
+
+def confirm_disclaimer(student_id, data):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO disclaimers (
+            student_id, signer_type, signer_name, reason
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            student_id,
+            data["signer_type"],
+            data["signer_name"],
+            data["reason"],
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def list_disclaimers(student_id):
+    return get_db().execute(
+        """
+        SELECT *
+        FROM disclaimers
+        WHERE student_id = ?
+        ORDER BY confirmed_at DESC, id DESC
+        """,
+        (student_id,),
+    ).fetchall()
