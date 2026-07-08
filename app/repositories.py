@@ -144,10 +144,10 @@ def get_student_questionnaire(student_id):
     ).fetchone()
 
 
-def get_or_create_primary_parent(student_id, data):
-    parent = get_db().execute(
+def get_primary_parent_contact(student_id):
+    row = get_db().execute(
         """
-        SELECT id
+        SELECT *
         FROM parent_contacts
         WHERE student_id = ?
         ORDER BY is_primary_decision_maker DESC, id
@@ -155,8 +155,13 @@ def get_or_create_primary_parent(student_id, data):
         """,
         (student_id,),
     ).fetchone()
+    return row_to_parent_contact(row) if row else None
+
+
+def get_or_create_primary_parent(student_id, data):
+    parent = get_primary_parent_contact(student_id)
     if parent:
-        return parent["id"]
+        return parent.id
 
     return create_parent_contact(
         student_id,
@@ -175,10 +180,10 @@ def update_parent_contact_for_questionnaire(student_id, parent_contact_id, data)
         """
         UPDATE parent_contacts
         SET
-            name = ?,
-            relationship = ?,
-            phone = ?,
-            communication_method = ?,
+            name = COALESCE(NULLIF(?, ''), name),
+            relationship = COALESCE(NULLIF(?, ''), relationship),
+            phone = COALESCE(NULLIF(?, ''), phone),
+            communication_method = COALESCE(NULLIF(?, ''), communication_method),
             questionnaire_status = '已填写',
             updated_at = CURRENT_TIMESTAMP
         WHERE student_id = ? AND id = ?

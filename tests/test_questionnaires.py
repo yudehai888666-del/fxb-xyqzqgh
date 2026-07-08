@@ -160,3 +160,67 @@ def test_parent_questionnaire_updates_reused_parent_contact(client, app):
     assert parent.phone == "13900000003"
     assert parent.communication_method == "微信"
     assert parent.questionnaire_status == "已填写"
+
+
+def test_parent_questionnaire_prefills_existing_primary_parent_contact(client, app):
+    with app.app_context():
+        student_id = create_sample_student()
+        repositories.create_parent_contact(
+            student_id,
+            {
+                "name": "王女士",
+                "relationship": "母亲",
+                "phone": "13900000004",
+                "communication_method": "微信",
+                "is_primary_decision_maker": True,
+            },
+        )
+
+    response = client.get(f"/students/{student_id}/parent-questionnaire")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'value="王女士"' in html
+    assert 'value="13900000004"' in html
+
+
+def test_parent_questionnaire_blank_optional_contact_fields_do_not_erase_existing_contact(
+    client, app
+):
+    with app.app_context():
+        student_id = create_sample_student()
+        repositories.create_parent_contact(
+            student_id,
+            {
+                "name": "王女士",
+                "relationship": "母亲",
+                "phone": "13900000005",
+                "communication_method": "微信",
+                "is_primary_decision_maker": True,
+            },
+        )
+
+    client.post(
+        f"/students/{student_id}/parent-questionnaire",
+        data={
+            "parent_name": "王女士",
+            "relationship": "母亲",
+            "parent_phone": "",
+            "communication_method": "",
+            "family_resources": "家庭支持稳定",
+            "target_priorities": "保研第一",
+            "parent_observations": "目标清晰",
+            "current_concerns": "时间分配",
+            "investment_willingness": "愿意投入",
+        },
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        parent = repositories.list_parent_contacts(student_id)[0]
+        questionnaire = repositories.get_parent_questionnaire(student_id)
+
+    assert parent.phone == "13900000005"
+    assert parent.communication_method == "微信"
+    assert questionnaire["parent_phone"] == "13900000005"
+    assert questionnaire["communication_method"] == "微信"

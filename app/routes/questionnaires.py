@@ -33,8 +33,14 @@ def parent_questionnaire(student_id):
         repositories.save_parent_questionnaire(student_id, request.form)
         return redirect(url_for("students.detail", student_id=student_id))
 
+    questionnaire = repositories.get_parent_questionnaire(student_id)
+    parent_contact = None
+    if questionnaire is None:
+        parent_contact = repositories.get_primary_parent_contact(student_id)
+
     return render_template(
         "questionnaires/parent.html",
         student=student,
-        questionnaire=repositories.get_parent_questionnaire(student_id),
+        questionnaire=questionnaire,
+        parent_contact=parent_contact,
     )

@@ -13,22 +13,26 @@
   </section>
 
   <form class="form-panel" method="post">
+    {% set parent_name = questionnaire["parent_name"] if questionnaire else (parent_contact.name if parent_contact else "") %}
+    {% set relationship = questionnaire["relationship"] if questionnaire else (parent_contact.relationship if parent_contact else "母亲") %}
+    {% set parent_phone = questionnaire["parent_phone"] if questionnaire else (parent_contact.phone if parent_contact else "") %}
+    {% set communication_method = questionnaire["communication_method"] if questionnaire else (parent_contact.communication_method if parent_contact else "微信") %}
     <div class="form-grid">
       <label>
         <span>家长姓名</span>
-        <input name="parent_name" value="{{ questionnaire["parent_name"] if questionnaire else "" }}" required>
+        <input name="parent_name" value="{{ parent_name }}" required>
       </label>
       <label>
         <span>与学生关系</span>
-        <input name="relationship" value="{{ questionnaire["relationship"] if questionnaire else "母亲" }}" required>
+        <input name="relationship" value="{{ relationship }}" required>
       </label>
       <label>
         <span>家长联系方式</span>
-        <input name="parent_phone" type="tel" value="{{ questionnaire["parent_phone"] if questionnaire else "" }}">
+        <input name="parent_phone" type="tel" value="{{ parent_phone }}">
       </label>
       <label>
         <span>常用沟通方式</span>
-        <input name="communication_method" value="{{ questionnaire["communication_method"] if questionnaire else "微信" }}">
+        <input name="communication_method" value="{{ communication_method }}">
       </label>
       <label>
         <span>家庭资源</span>
