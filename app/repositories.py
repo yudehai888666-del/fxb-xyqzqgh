@@ -146,7 +146,13 @@ def get_student_questionnaire(student_id):
 
 def get_or_create_primary_parent(student_id, data):
     parent = get_db().execute(
-        "SELECT id FROM parent_contacts WHERE student_id = ? ORDER BY id LIMIT 1",
+        """
+        SELECT id
+        FROM parent_contacts
+        WHERE student_id = ?
+        ORDER BY is_primary_decision_maker DESC, id
+        LIMIT 1
+        """,
         (student_id,),
     ).fetchone()
     if parent:
@@ -164,9 +170,34 @@ def get_or_create_primary_parent(student_id, data):
     )
 
 
+def update_parent_contact_for_questionnaire(student_id, parent_contact_id, data):
+    get_db().execute(
+        """
+        UPDATE parent_contacts
+        SET
+            name = ?,
+            relationship = ?,
+            phone = ?,
+            communication_method = ?,
+            questionnaire_status = '已填写',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE student_id = ? AND id = ?
+        """,
+        (
+            data.get("parent_name", ""),
+            data.get("relationship", ""),
+            data.get("parent_phone", ""),
+            data.get("communication_method", ""),
+            student_id,
+            parent_contact_id,
+        ),
+    )
+
+
 def save_parent_questionnaire(student_id, data):
     db = get_db()
     parent_contact_id = get_or_create_primary_parent(student_id, data)
+    update_parent_contact_for_questionnaire(student_id, parent_contact_id, data)
     db.execute(
         """
         INSERT INTO parent_questionnaires (
@@ -192,14 +223,6 @@ def save_parent_questionnaire(student_id, data):
             data.get("current_concerns", ""),
             data.get("investment_willingness", ""),
         ),
-    )
-    db.execute(
-        """
-        UPDATE parent_contacts
-        SET questionnaire_status = '已填写', updated_at = CURRENT_TIMESTAMP
-        WHERE student_id = ? AND id = ?
-        """,
-        (student_id, parent_contact_id),
     )
     db.commit()
 
