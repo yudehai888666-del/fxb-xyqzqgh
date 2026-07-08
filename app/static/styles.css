@@ -167,6 +167,16 @@ tr:last-child td {
   gap: 16px;
 }
 
+.form-error {
+  margin: 0 0 18px;
+  padding: 10px 12px;
+  border: 1px solid #f3b4b4;
+  border-radius: 6px;
+  background: #fff1f1;
+  color: #9f1d1d;
+  font-weight: 700;
+}
+
 label span {
   display: block;
   margin-bottom: 6px;

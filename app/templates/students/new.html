@@ -11,46 +11,49 @@
   </section>
 
   <form class="form-panel" method="post">
+    {% if error %}
+      <p class="form-error" role="alert">{{ error }}</p>
+    {% endif %}
     <div class="form-grid">
       <label>
         <span>姓名</span>
-        <input name="name" required>
+        <input name="name" value="{{ form.get('name', '') }}" required>
       </label>
       <label>
         <span>性别</span>
-        <input name="gender" required>
+        <input name="gender" value="{{ form.get('gender', '') }}" required>
       </label>
       <label>
         <span>入学年份</span>
-        <input name="enrollment_year" type="number" min="2000" max="2100" required>
+        <input name="enrollment_year" type="number" min="2000" max="2100" value="{{ form.get('enrollment_year', '') }}" required>
       </label>
       <label>
         <span>当前学期</span>
-        <input name="current_term" required>
+        <input name="current_term" value="{{ form.get('current_term', '') }}" required>
       </label>
       <label>
         <span>学校</span>
-        <input name="school" required>
+        <input name="school" value="{{ form.get('school', '') }}" required>
       </label>
       <label>
         <span>学院</span>
-        <input name="college">
+        <input name="college" value="{{ form.get('college', '') }}">
       </label>
       <label>
         <span>专业方向</span>
-        <input name="major" required>
+        <input name="major" value="{{ form.get('major', '') }}" required>
       </label>
       <label>
         <span>城市</span>
-        <input name="city">
+        <input name="city" value="{{ form.get('city', '') }}">
       </label>
       <label>
         <span>联系电话</span>
-        <input name="phone" type="tel">
+        <input name="phone" type="tel" value="{{ form.get('phone', '') }}">
       </label>
       <label>
         <span>负责老师</span>
-        <input name="responsible_teacher">
+        <input name="responsible_teacher" value="{{ form.get('responsible_teacher', '') }}">
       </label>
     </div>
     <div class="form-actions">

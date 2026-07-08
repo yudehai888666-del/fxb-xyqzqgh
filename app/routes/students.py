@@ -13,10 +13,23 @@ def list_view():
 @students_bp.route("/new", methods=("GET", "POST"))
 def new():
     if request.method == "POST":
+        form = request.form
+        try:
+            int(form.get("enrollment_year", ""))
+        except ValueError:
+            return (
+                render_template(
+                    "students/new.html",
+                    error="入学年份必须是有效年份",
+                    form=form,
+                ),
+                400,
+            )
+
         student_id = repositories.create_student(request.form)
         return redirect(url_for("students.detail", student_id=student_id))
 
-    return render_template("students/new.html")
+    return render_template("students/new.html", form={})
 
 
 @students_bp.get("/<int:student_id>")
