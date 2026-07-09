@@ -184,7 +184,7 @@ def test_parent_questionnaire_prefills_existing_primary_parent_contact(client, a
     assert 'value="13900000004"' in html
 
 
-def test_parent_questionnaire_relationship_has_choices_without_default(client, app):
+def test_parent_questionnaire_relationship_is_plain_input_without_default(client, app):
     with app.app_context():
         student_id = create_sample_student()
 
@@ -193,11 +193,10 @@ def test_parent_questionnaire_relationship_has_choices_without_default(client, a
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert 'name="relationship"' in html
-    assert 'list="relationship-options"' in html
-    assert '<option value="父亲">' in html
-    assert '<option value="母亲">' in html
-    assert '<option value="其他监护人">' in html
-    assert 'value="" list="relationship-options"' in html
+    assert 'placeholder="请输入与学生的关系，如父亲、母亲、其他监护人"' in html
+    assert 'list="relationship-options"' not in html
+    assert '<datalist' not in html
+    assert 'value="" placeholder="请输入与学生的关系，如父亲、母亲、其他监护人"' in html
     assert "家庭可投入的时间、预算、行业资源、人脉资源" in html
     assert "保研第一、考研第二、就业第三" in html
     assert "家长对孩子的观察" in html
