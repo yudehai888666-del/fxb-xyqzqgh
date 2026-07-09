@@ -44,4 +44,5 @@ def detail(student_id):
         student=student,
         parents=repositories.list_parent_contacts(student_id),
         completion=get_student_completion(student_id),
+        planning_documents=repositories.list_planning_documents(student_id),
     )

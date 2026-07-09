@@ -90,4 +90,35 @@
       <p class="empty">暂无家长联系人。</p>
     {% endif %}
   </section>
+
+  <section class="panel" style="animation-delay:0.25s;">
+    <div class="panel-header">
+      <h2>已有规划草稿</h2>
+      <a class="button secondary" href="{{ url_for('planning.generate', student_id=student.id) }}">生成初步规划</a>
+    </div>
+    {% if planning_documents %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>标题</th>
+              <th>状态</th>
+              <th>文件</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for document in planning_documents %}
+              <tr>
+                <td><a href="{{ url_for('planning.detail', student_id=student.id, document_id=document['id']) }}">{{ document["title"] }}</a></td>
+                <td>{{ document["status"] }}</td>
+                <td>{{ document["file_path"] or "未保存" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty" style="padding:16px 0;margin:0;font-size:14px;">暂无规划草稿。</p>
+    {% endif %}
+  </section>
 {% endblock %}
