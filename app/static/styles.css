@@ -185,6 +185,14 @@ label span {
   font-weight: 600;
 }
 
+.field-note {
+  display: block;
+  margin: -2px 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 input {
   width: 100%;
   min-height: 42px;

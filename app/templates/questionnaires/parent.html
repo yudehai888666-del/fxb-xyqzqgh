@@ -14,7 +14,7 @@
 
   <form class="form-panel" method="post">
     {% set parent_name = questionnaire["parent_name"] if questionnaire else (parent_contact.name if parent_contact else "") %}
-    {% set relationship = questionnaire["relationship"] if questionnaire else (parent_contact.relationship if parent_contact else "母亲") %}
+    {% set relationship = questionnaire["relationship"] if questionnaire else (parent_contact.relationship if parent_contact else "") %}
     {% set parent_phone = questionnaire["parent_phone"] if questionnaire else (parent_contact.phone if parent_contact else "") %}
     {% set communication_method = questionnaire["communication_method"] if questionnaire else (parent_contact.communication_method if parent_contact else "微信") %}
     <div class="form-grid">
@@ -24,7 +24,12 @@
       </label>
       <label>
         <span>与学生关系</span>
-        <input name="relationship" value="{{ relationship }}" required>
+        <input name="relationship" value="{{ relationship }}" list="relationship-options" placeholder="请选择或输入关系" required>
+        <datalist id="relationship-options">
+          <option value="父亲"></option>
+          <option value="母亲"></option>
+          <option value="其他监护人"></option>
+        </datalist>
       </label>
       <label>
         <span>家长联系方式</span>
@@ -43,7 +48,8 @@
         <textarea name="target_priorities" rows="5">{{ questionnaire["target_priorities"] if questionnaire else "" }}</textarea>
       </label>
       <label>
-        <span>家长观察</span>
+        <span>家长对孩子的观察</span>
+        <small class="field-note">可记录学习习惯、自律情况、沟通状态、抗压能力、专业满意度等。</small>
         <textarea name="parent_observations" rows="5">{{ questionnaire["parent_observations"] if questionnaire else "" }}</textarea>
       </label>
       <label>

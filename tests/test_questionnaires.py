@@ -184,6 +184,24 @@ def test_parent_questionnaire_prefills_existing_primary_parent_contact(client, a
     assert 'value="13900000004"' in html
 
 
+def test_parent_questionnaire_relationship_has_choices_without_default(client, app):
+    with app.app_context():
+        student_id = create_sample_student()
+
+    response = client.get(f"/students/{student_id}/parent-questionnaire")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'name="relationship"' in html
+    assert 'list="relationship-options"' in html
+    assert '<option value="父亲">' in html
+    assert '<option value="母亲">' in html
+    assert '<option value="其他监护人">' in html
+    assert 'value="" list="relationship-options"' in html
+    assert "家长对孩子的观察" in html
+    assert "学习习惯、自律情况、沟通状态、抗压能力、专业满意度" in html
+
+
 def test_parent_questionnaire_blank_optional_contact_fields_do_not_erase_existing_contact(
     client, app
 ):
