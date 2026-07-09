@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, redirect, render_template, request, url_for
 
 from app import repositories
+from app.services.completion import get_student_completion
 
 students_bp = Blueprint("students", __name__, url_prefix="/students")
 
@@ -42,4 +43,5 @@ def detail(student_id):
         "students/detail.html",
         student=student,
         parents=repositories.list_parent_contacts(student_id),
+        completion=get_student_completion(student_id),
     )
