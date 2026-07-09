@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from flask import Flask
 
 from app.config import Config
@@ -14,6 +16,7 @@ def create_app(test_config=None):
 
     app.config["DATABASE"].parent.mkdir(parents=True, exist_ok=True)
     app.config["UPLOAD_DIR"].mkdir(parents=True, exist_ok=True)
+    Path(app.config["GENERATED_DIR"]).mkdir(parents=True, exist_ok=True)
 
     app.teardown_appcontext(close_db)
     with app.app_context():

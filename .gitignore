@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 instance/
 uploads/
+generated/
 *.sqlite3
 *.db
 .DS_Store
