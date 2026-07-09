@@ -52,6 +52,7 @@
         <a class="button" href="{{ url_for('questionnaires.student_questionnaire', student_id=student.id) }}">学生问卷</a>
         <a class="button" href="{{ url_for('questionnaires.materials', student_id=student.id) }}">材料与免责</a>
         <a class="button" href="{{ url_for('teacher_notes.edit', student_id=student.id) }}">教师沟通纪要</a>
+        <a class="button" href="{{ url_for('planning.generate', student_id=student.id) }}">生成初步规划</a>
       </div>
     </aside>
   </section>

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}{{ document["title"] }} - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">初步规划</p>
+      <h1>{{ document["title"] }}</h1>
+    </div>
+    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回档案</a>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>规划预览</h2>
+      <span class="badge badge-muted">{{ document["status"] }}</span>
+    </div>
+    <pre class="markdown-preview">{{ document["content_markdown"] }}</pre>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>文件路径</h2>
+    </div>
+    <p class="muted" style="margin:0;">{{ document["file_path"] }}</p>
+  </section>
+{% endblock %}
