@@ -82,3 +82,66 @@ def test_student_completion_ready_after_required_inputs(app):
         completion = get_student_completion(student_id)
 
         assert completion["ready_for_ai"] is True
+
+
+def test_blank_saved_rows_do_not_count_as_complete(app):
+    with app.app_context():
+        student_id = create_sample_student()
+
+        repositories.save_student_questionnaire(
+            student_id,
+            {
+                "adaptation_status": "",
+                "academic_status": "   ",
+                "weak_subjects": "",
+                "tutoring_needs": "",
+                "interests_strengths": "",
+                "future_intentions": "",
+                "motivation_status": "",
+            },
+        )
+        repositories.save_parent_questionnaire(
+            student_id,
+            {
+                "parent_name": "赵女士",
+                "relationship": "母亲",
+                "parent_phone": "13900000008",
+                "communication_method": "微信",
+                "family_resources": "",
+                "target_priorities": "   ",
+                "parent_observations": "",
+                "current_concerns": "",
+                "investment_willingness": "",
+            },
+        )
+        repositories.save_teacher_notes(
+            student_id,
+            {
+                "source_channel": "",
+                "consultation_stage": "   ",
+                "core_request": "",
+                "family_student_conflict": "",
+                "resource_match_level": "",
+                "goal_feasibility": "",
+                "execution_risk": "",
+                "academic_risk": "",
+                "transfer_feasibility": "",
+                "service_suggestions": "",
+                "ai_generation_focus": "",
+            },
+        )
+        repositories.confirm_disclaimer(
+            student_id,
+            {
+                "signer_type": "家长",
+                "signer_name": "赵女士",
+                "reason": "当前材料暂缺，先基于已填写信息生成规划。",
+            },
+        )
+
+        completion = get_student_completion(student_id)
+
+        assert completion["student_questionnaire"] == "未填写"
+        assert completion["parent_questionnaire"] == "未填写"
+        assert completion["teacher_notes"] == "未填写"
+        assert completion["ready_for_ai"] is False
