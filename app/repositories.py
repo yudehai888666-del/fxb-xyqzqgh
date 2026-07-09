@@ -253,6 +253,59 @@ def get_parent_questionnaire(student_id):
     ).fetchone()
 
 
+def create_planning_document(student_id, data):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO planning_documents (
+            student_id, title, status, content_markdown, file_path
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            student_id,
+            data["title"],
+            data.get("status", "草稿"),
+            data["content_markdown"],
+            data.get("file_path", ""),
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def get_planning_document(document_id):
+    return get_db().execute(
+        "SELECT * FROM planning_documents WHERE id = ?",
+        (document_id,),
+    ).fetchone()
+
+
+def list_planning_documents(student_id):
+    return get_db().execute(
+        """
+        SELECT *
+        FROM planning_documents
+        WHERE student_id = ?
+        ORDER BY updated_at DESC, id DESC
+        """,
+        (student_id,),
+    ).fetchall()
+
+
+def update_planning_document_file_path(document_id, file_path):
+    db = get_db()
+    db.execute(
+        """
+        UPDATE planning_documents
+        SET file_path = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (file_path, document_id),
+    )
+    db.commit()
+
+
 def save_teacher_notes(student_id, data):
     fields = (
         "source_channel",

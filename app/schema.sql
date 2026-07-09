@@ -58,6 +58,17 @@ CREATE TABLE IF NOT EXISTS parent_questionnaires (
         REFERENCES parent_contacts(student_id, id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS planning_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT '草稿',
+    content_markdown TEXT NOT NULL,
+    file_path TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS materials (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
