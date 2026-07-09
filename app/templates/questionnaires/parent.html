@@ -41,10 +41,12 @@
       </label>
       <label>
         <span>家庭资源</span>
+        <small class="field-note">可填写家庭可投入的时间、预算、行业资源、人脉资源、是否支持考研/留学/就业专项投入等。</small>
         <textarea name="family_resources" rows="5">{{ questionnaire["family_resources"] if questionnaire else "" }}</textarea>
       </label>
       <label>
         <span>目标优先级</span>
+        <small class="field-note">请按重要程度写出家庭期待，例如保研第一、考研第二、就业第三，也可以写“暂不确定”。</small>
         <textarea name="target_priorities" rows="5">{{ questionnaire["target_priorities"] if questionnaire else "" }}</textarea>
       </label>
       <label>
@@ -54,10 +56,12 @@
       </label>
       <label>
         <span>当前担忧</span>
+        <small class="field-note">可填写目前最担心的问题，例如挂科风险、专业不适应、转专业窗口、英语证书、执行力或未来方向不清晰。</small>
         <textarea name="current_concerns" rows="5">{{ questionnaire["current_concerns"] if questionnaire else "" }}</textarea>
       </label>
       <label>
         <span>投入意愿</span>
+        <small class="field-note">可说明家庭愿意投入的支持方式，例如时间陪伴、基础规划、学科辅导、竞赛科研、语言培训或后续专项服务。</small>
         <textarea name="investment_willingness" rows="5">{{ questionnaire["investment_willingness"] if questionnaire else "" }}</textarea>
       </label>
     </div>

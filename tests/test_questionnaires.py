@@ -198,8 +198,12 @@ def test_parent_questionnaire_relationship_has_choices_without_default(client, a
     assert '<option value="母亲">' in html
     assert '<option value="其他监护人">' in html
     assert 'value="" list="relationship-options"' in html
+    assert "家庭可投入的时间、预算、行业资源、人脉资源" in html
+    assert "保研第一、考研第二、就业第三" in html
     assert "家长对孩子的观察" in html
     assert "学习习惯、自律情况、沟通状态、抗压能力、专业满意度" in html
+    assert "挂科风险、专业不适应、转专业窗口" in html
+    assert "基础规划、学科辅导、竞赛科研、语言培训" in html
 
 
 def test_parent_questionnaire_blank_optional_contact_fields_do_not_erase_existing_contact(
