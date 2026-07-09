@@ -9,6 +9,7 @@ def app(tmp_path):
         {
             "TESTING": True,
             "DATABASE": tmp_path / "test.sqlite3",
+            "GENERATED_DIR": tmp_path / "generated",
             "UPLOAD_DIR": tmp_path / "uploads",
         }
     )
