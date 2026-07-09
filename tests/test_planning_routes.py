@@ -123,3 +123,48 @@ def test_post_generate_rejects_unready_student_without_document(client, app):
     assert "信息仍需补充" in response.get_data(as_text=True)
     with app.app_context():
         assert repositories.list_planning_documents(student_id) == []
+
+
+def test_post_generate_cleans_document_when_markdown_save_fails(
+    client,
+    app,
+    monkeypatch,
+):
+    def fail_save(*args, **kwargs):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr("app.routes.planning.save_planning_markdown", fail_save)
+    with app.app_context():
+        student_id = seed_ready_student()
+
+    response = client.post(f"/students/{student_id}/planning/generate")
+
+    assert response.status_code == 500
+    assert "生成初步规划失败" in response.get_data(as_text=True)
+    with app.app_context():
+        assert repositories.list_planning_documents(student_id) == []
+
+
+def test_post_generate_cleans_document_and_file_when_file_path_update_fails(
+    client,
+    app,
+    monkeypatch,
+):
+    def fail_update(*args, **kwargs):
+        raise RuntimeError("db fail")
+
+    monkeypatch.setattr(
+        "app.routes.planning.repositories.update_planning_document_file_path",
+        fail_update,
+    )
+    with app.app_context():
+        student_id = seed_ready_student()
+        generated_dir = Path(app.config["GENERATED_DIR"])
+
+    response = client.post(f"/students/{student_id}/planning/generate")
+
+    assert response.status_code == 500
+    assert "生成初步规划失败" in response.get_data(as_text=True)
+    with app.app_context():
+        assert repositories.list_planning_documents(student_id) == []
+    assert list(generated_dir.glob("plans/student-*/plan-*.md")) == []

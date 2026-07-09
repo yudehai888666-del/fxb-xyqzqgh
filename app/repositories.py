@@ -306,6 +306,12 @@ def update_planning_document_file_path(document_id, file_path):
     db.commit()
 
 
+def delete_planning_document(document_id):
+    db = get_db()
+    db.execute("DELETE FROM planning_documents WHERE id = ?", (document_id,))
+    db.commit()
+
+
 def save_teacher_notes(student_id, data):
     fields = (
         "source_channel",

@@ -1,4 +1,14 @@
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from pathlib import Path
+
+from flask import (
+    Blueprint,
+    abort,
+    current_app,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
 from app import repositories
 from app.services.completion import get_student_completion
@@ -32,15 +42,40 @@ def generate(student_id):
                 400,
             )
 
-        draft = generate_initial_plan(build_planning_context(student_id))
-        document_id = repositories.create_planning_document(student_id, draft)
-        relative_path = save_planning_markdown(
-            student_id,
-            document_id,
-            draft["title"],
-            draft["content_markdown"],
-        )
-        repositories.update_planning_document_file_path(document_id, relative_path)
+        document_id = None
+        relative_path = None
+        try:
+            draft = generate_initial_plan(build_planning_context(student_id))
+            document_id = repositories.create_planning_document(student_id, draft)
+            relative_path = save_planning_markdown(
+                student_id,
+                document_id,
+                draft["title"],
+                draft["content_markdown"],
+            )
+            repositories.update_planning_document_file_path(document_id, relative_path)
+        except Exception:
+            if relative_path:
+                try:
+                    (Path(current_app.config["GENERATED_DIR"]) / relative_path).unlink(
+                        missing_ok=True
+                    )
+                except Exception:
+                    pass
+            if document_id:
+                try:
+                    repositories.delete_planning_document(document_id)
+                except Exception:
+                    pass
+            return (
+                render_template(
+                    "planning/generate.html",
+                    student=student,
+                    completion=completion,
+                    error="生成初步规划失败，请稍后重试。",
+                ),
+                500,
+            )
         return redirect(
             url_for(
                 "planning.detail",
