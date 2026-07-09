@@ -46,3 +46,34 @@ def test_teacher_notes_save(client, app):
         notes = repositories.get_teacher_notes(student_id)
         assert notes["goal_feasibility"] == "保研需要观察大一绩点"
         assert notes["ai_generation_focus"] == "保研第一，考研第二，就业第三"
+
+
+def test_teacher_notes_partial_update_preserves_existing_fields(app):
+    with app.app_context():
+        student_id = create_sample_student()
+        repositories.save_teacher_notes(
+            student_id,
+            {
+                "source_channel": "家长首次咨询",
+                "consultation_stage": "初诊",
+                "core_request": "希望明确保研路径",
+                "family_student_conflict": "家长目标高，学生暂时观望",
+                "resource_match_level": "家庭支持较强",
+                "goal_feasibility": "保研需要观察大一绩点",
+                "execution_risk": "执行需要老师持续跟进",
+                "academic_risk": "数学基础需要补强",
+                "transfer_feasibility": "暂不建议转专业",
+                "service_suggestions": "先做学业节奏管理",
+                "ai_generation_focus": "保研第一，考研第二，就业第三",
+            },
+        )
+
+        repositories.save_teacher_notes(
+            student_id,
+            {"goal_feasibility": "更新后的目标可行性"},
+        )
+
+        notes = repositories.get_teacher_notes(student_id)
+        assert notes["source_channel"] == "家长首次咨询"
+        assert notes["goal_feasibility"] == "更新后的目标可行性"
+        assert notes["ai_generation_focus"] == "保研第一，考研第二，就业第三"

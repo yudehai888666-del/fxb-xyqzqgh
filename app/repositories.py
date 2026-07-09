@@ -254,6 +254,25 @@ def get_parent_questionnaire(student_id):
 
 
 def save_teacher_notes(student_id, data):
+    fields = (
+        "source_channel",
+        "consultation_stage",
+        "core_request",
+        "family_student_conflict",
+        "resource_match_level",
+        "goal_feasibility",
+        "execution_risk",
+        "academic_risk",
+        "transfer_feasibility",
+        "service_suggestions",
+        "ai_generation_focus",
+    )
+    existing = get_teacher_notes(student_id)
+    values = {
+        field: data[field] if field in data else (existing[field] if existing else "")
+        for field in fields
+    }
+
     db = get_db()
     db.execute(
         """
@@ -280,17 +299,17 @@ def save_teacher_notes(student_id, data):
         """,
         (
             student_id,
-            data.get("source_channel", ""),
-            data.get("consultation_stage", ""),
-            data.get("core_request", ""),
-            data.get("family_student_conflict", ""),
-            data.get("resource_match_level", ""),
-            data.get("goal_feasibility", ""),
-            data.get("execution_risk", ""),
-            data.get("academic_risk", ""),
-            data.get("transfer_feasibility", ""),
-            data.get("service_suggestions", ""),
-            data.get("ai_generation_focus", ""),
+            values["source_channel"],
+            values["consultation_stage"],
+            values["core_request"],
+            values["family_student_conflict"],
+            values["resource_match_level"],
+            values["goal_feasibility"],
+            values["execution_risk"],
+            values["academic_risk"],
+            values["transfer_feasibility"],
+            values["service_suggestions"],
+            values["ai_generation_focus"],
         ),
     )
     db.commit()
