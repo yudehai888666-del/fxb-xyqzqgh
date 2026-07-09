@@ -109,6 +109,28 @@ def test_disclaimer_confirmation_records_reason(client, app):
     assert disclaimers[0]["signer_name"] == "李女士"
 
 
+def test_blank_disclaimer_returns_error_without_record(client, app):
+    with app.app_context():
+        student_id = create_sample_student()
+
+    response = client.post(
+        f"/students/{student_id}/materials",
+        data={
+            "action": "disclaimer",
+            "signer_type": "   ",
+            "signer_name": " \t ",
+            "reason": "",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "免责确认信息不能为空" in response.get_data(as_text=True)
+    with app.app_context():
+        disclaimers = repositories.list_disclaimers(student_id)
+
+    assert disclaimers == []
+
+
 def test_unsupported_material_suffix_returns_error_without_record(client, app):
     with app.app_context():
         student_id = create_sample_student()

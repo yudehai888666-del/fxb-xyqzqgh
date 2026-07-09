@@ -357,6 +357,9 @@ def list_materials(student_id):
 
 def confirm_disclaimer(student_id, data):
     db = get_db()
+    signer_type = data["signer_type"].strip()
+    signer_name = data["signer_name"].strip()
+    reason = data["reason"].strip()
     cursor = db.execute(
         """
         INSERT INTO disclaimers (
@@ -366,9 +369,9 @@ def confirm_disclaimer(student_id, data):
         """,
         (
             student_id,
-            data["signer_type"],
-            data["signer_name"],
-            data["reason"],
+            signer_type,
+            signer_name,
+            reason,
         ),
     )
     db.commit()

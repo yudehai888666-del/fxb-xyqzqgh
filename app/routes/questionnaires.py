@@ -75,14 +75,25 @@ def materials(student_id):
                         url_for("questionnaires.materials", student_id=student_id)
                     )
         elif action == "disclaimer":
-            repositories.confirm_disclaimer(
-                student_id,
-                {
-                    "signer_type": request.form.get("signer_type", ""),
-                    "signer_name": request.form.get("signer_name", ""),
-                    "reason": request.form.get("reason", ""),
-                },
-            )
+            disclaimer_data = {
+                "signer_type": request.form.get("signer_type", "").strip(),
+                "signer_name": request.form.get("signer_name", "").strip(),
+                "reason": request.form.get("reason", "").strip(),
+            }
+            if not all(disclaimer_data.values()):
+                error = "免责确认信息不能为空，请填写确认人类型、确认人姓名和确认原因。"
+                return (
+                    render_template(
+                        "questionnaires/materials.html",
+                        student=student,
+                        materials=repositories.list_materials(student_id),
+                        disclaimers=repositories.list_disclaimers(student_id),
+                        error=error,
+                    ),
+                    400,
+                )
+
+            repositories.confirm_disclaimer(student_id, disclaimer_data)
             return redirect(url_for("questionnaires.materials", student_id=student_id))
 
     return render_template(

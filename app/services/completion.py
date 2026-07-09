@@ -33,12 +33,18 @@ TEACHER_NOTES_FIELDS = (
     "ai_generation_focus",
 )
 
+DISCLAIMER_FIELDS = ("signer_type", "signer_name", "reason")
+
 
 def row_has_substantive_text(row, fields):
     if row is None:
         return False
 
     return any(str(row[field]).strip() for field in fields if row[field] is not None)
+
+
+def disclaimer_is_substantive(row):
+    return all(row[field] is not None and str(row[field]).strip() for field in DISCLAIMER_FIELDS)
 
 
 def get_student_completion(student_id):
@@ -51,7 +57,10 @@ def get_student_completion(student_id):
         PARENT_QUESTIONNAIRE_FIELDS,
     )
     has_materials = bool(repositories.list_materials(student_id))
-    has_disclaimers = bool(repositories.list_disclaimers(student_id))
+    has_substantive_disclaimer = any(
+        disclaimer_is_substantive(row)
+        for row in repositories.list_disclaimers(student_id)
+    )
     has_teacher_notes = row_has_substantive_text(
         repositories.get_teacher_notes(student_id),
         TEACHER_NOTES_FIELDS,
@@ -61,12 +70,12 @@ def get_student_completion(student_id):
         "student_questionnaire": "已填写" if has_student_questionnaire else "未填写",
         "parent_questionnaire": "已填写" if has_parent_questionnaire else "未填写",
         "materials": "已上传材料" if has_materials else "未上传材料",
-        "disclaimer": "已确认免责" if has_disclaimers else "未确认免责",
+        "disclaimer": "已确认免责" if has_substantive_disclaimer else "未确认免责",
         "teacher_notes": "已填写" if has_teacher_notes else "未填写",
         "ready_for_ai": (
             has_student_questionnaire
             and has_parent_questionnaire
             and has_teacher_notes
-            and (has_materials or has_disclaimers)
+            and (has_materials or has_substantive_disclaimer)
         ),
     }
