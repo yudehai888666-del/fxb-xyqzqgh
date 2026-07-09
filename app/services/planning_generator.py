@@ -12,7 +12,13 @@ def row_to_dict(row):
 def value(data, key, fallback="未填写"):
     if data is None:
         return fallback
-    raw_value = data.get(key, fallback)
+    if hasattr(data, "get"):
+        raw_value = data.get(key, fallback)
+    else:
+        try:
+            raw_value = data[key]
+        except (KeyError, IndexError):
+            raw_value = fallback
     if raw_value is None:
         return fallback
     text = str(raw_value).strip()

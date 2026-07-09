@@ -5,6 +5,8 @@ from app.services.planning_generator import (
     build_planning_context,
     generate_information_basis,
     generate_initial_plan,
+    row_to_dict,
+    value,
 )
 
 
@@ -106,6 +108,28 @@ def test_generate_initial_plan_contains_core_sections(app):
     assert "## 八、目标风险、备选路径与责任边界" in content_markdown
     assert "第二路径" in content_markdown
     assert "费用边界" in content_markdown
+
+
+def test_row_to_dict_handles_missing_and_mapping_values():
+    data = {"academic_status": "英语基础较好"}
+
+    assert row_to_dict(None) == {}
+    assert row_to_dict(data) == data
+
+
+def test_value_handles_missing_blank_and_mapping_values():
+    assert value(None, "x") == "未填写"
+    assert value({"x": "  abc  "}, "x") == "abc"
+    assert value({"x": "   "}, "x") == "未填写"
+    assert value({"x": None}, "x") == "未填写"
+
+
+def test_value_reads_sqlite_row_values(app):
+    with app.app_context():
+        student_id = seed_ready_student()
+        questionnaire = repositories.get_student_questionnaire(student_id)
+
+    assert value(questionnaire, "academic_status") == "英语基础较好，高等数学压力较大。"
 
 
 def test_build_planning_context_rejects_missing_student(app):
