@@ -65,8 +65,8 @@ CREATE TABLE IF NOT EXISTS planning_documents (
     status TEXT NOT NULL DEFAULT '草稿',
     content_markdown TEXT NOT NULL,
     file_path TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
 );
 
 CREATE TABLE IF NOT EXISTS materials (

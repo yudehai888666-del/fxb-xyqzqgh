@@ -298,7 +298,7 @@ def update_planning_document_file_path(document_id, file_path):
     db.execute(
         """
         UPDATE planning_documents
-        SET file_path = ?, updated_at = CURRENT_TIMESTAMP
+        SET file_path = ?, updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
         WHERE id = ?
         """,
         (file_path, document_id),
