@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}老师访谈与内部诊断：{{ student.name }} - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">教师沟通纪要</p>
+      <h1>老师访谈与内部诊断：{{ student.name }}</h1>
+      <p class="muted">这些内容只服务老师后台，不直接展示给家长或学生。</p>
+    </div>
+    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回档案</a>
+  </section>
+
+  <form class="form-panel" method="post">
+    <div class="form-grid">
+      <label>
+        <span>来源渠道</span>
+        <textarea name="source_channel" rows="4">{{ notes["source_channel"] if notes else "" }}</textarea>
+      </label>
+      <label>
+        <span>咨询阶段</span>
+        <textarea name="consultation_stage" rows="4">{{ notes["consultation_stage"] if notes else "" }}</textarea>
+      </label>
+      <label>
+        <span>核心诉求</span>
+        <textarea name="core_request" rows="5">{{ notes["core_request"] if notes else "" }}</textarea>
+      </label>
+      <label>
+        <span>家庭与学生冲突</span>
+        <textarea name="family_student_conflict" rows="5">{{ notes["family_student_conflict"] if notes else "" }}</textarea>
+      </label>
+      <label>
+        <span>资源匹配程度</span>
+        <textarea name="resource_match_level" rows="5">{{ notes["resource_match_level"] if notes else "" }}</textarea>
+      </label>
+      <label>
+        <span>目标可行性</span>
+        <textarea name="goal_feasibility" rows="5">{{ notes["goal_feasibility"] if notes else "" }}</textarea>
+      </label>
+      <label>
+        <span>执行风险</span>
+        <textarea name="execution_risk" rows="5">{{ notes["execution_risk"] if notes else "" }}</textarea>
+      </label>
+      <label>
+        <span>学业风险</span>
+        <textarea name="academic_risk" rows="5">{{ notes["academic_risk"] if notes else "" }}</textarea>
+      </label>
+      <label>
+        <span>转专业可行性</span>
+        <textarea name="transfer_feasibility" rows="5">{{ notes["transfer_feasibility"] if notes else "" }}</textarea>
+      </label>
+      <label>
+        <span>服务建议</span>
+        <textarea name="service_suggestions" rows="5">{{ notes["service_suggestions"] if notes else "" }}</textarea>
+      </label>
+      <label>
+        <span>AI 生成关注点</span>
+        <textarea name="ai_generation_focus" rows="5">{{ notes["ai_generation_focus"] if notes else "" }}</textarea>
+      </label>
+    </div>
+    <div class="form-actions">
+      <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>
+      <button class="button" type="submit">保存老师记录</button>
+    </div>
+  </form>
+{% endblock %}

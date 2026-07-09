@@ -253,6 +253,56 @@ def get_parent_questionnaire(student_id):
     ).fetchone()
 
 
+def save_teacher_notes(student_id, data):
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO teacher_notes (
+            student_id, source_channel, consultation_stage, core_request,
+            family_student_conflict, resource_match_level, goal_feasibility,
+            execution_risk, academic_risk, transfer_feasibility,
+            service_suggestions, ai_generation_focus
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(student_id) DO UPDATE SET
+            source_channel = excluded.source_channel,
+            consultation_stage = excluded.consultation_stage,
+            core_request = excluded.core_request,
+            family_student_conflict = excluded.family_student_conflict,
+            resource_match_level = excluded.resource_match_level,
+            goal_feasibility = excluded.goal_feasibility,
+            execution_risk = excluded.execution_risk,
+            academic_risk = excluded.academic_risk,
+            transfer_feasibility = excluded.transfer_feasibility,
+            service_suggestions = excluded.service_suggestions,
+            ai_generation_focus = excluded.ai_generation_focus,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            student_id,
+            data.get("source_channel", ""),
+            data.get("consultation_stage", ""),
+            data.get("core_request", ""),
+            data.get("family_student_conflict", ""),
+            data.get("resource_match_level", ""),
+            data.get("goal_feasibility", ""),
+            data.get("execution_risk", ""),
+            data.get("academic_risk", ""),
+            data.get("transfer_feasibility", ""),
+            data.get("service_suggestions", ""),
+            data.get("ai_generation_focus", ""),
+        ),
+    )
+    db.commit()
+
+
+def get_teacher_notes(student_id):
+    return get_db().execute(
+        "SELECT * FROM teacher_notes WHERE student_id = ?",
+        (student_id,),
+    ).fetchone()
+
+
 def create_material(student_id, data):
     db = get_db()
     cursor = db.execute(
