@@ -32,6 +32,7 @@ def test_material_upload_records_file(client, app):
             "material": (BytesIO(b"score details"), "score.txt"),
         },
         content_type="multipart/form-data",
+        follow_redirects=True,
     )
 
     assert response.status_code == 200
@@ -40,6 +41,51 @@ def test_material_upload_records_file(client, app):
 
     assert len(materials) == 1
     assert materials[0]["original_filename"] == "score.txt"
+
+
+def test_material_upload_accepts_chinese_filename(client, app):
+    with app.app_context():
+        student_id = create_sample_student()
+
+    response = client.post(
+        f"/students/{student_id}/materials",
+        data={
+            "action": "upload",
+            "uploader_type": "学生",
+            "category": "成绩单",
+            "material": (BytesIO(b"pdf details"), "成绩单.pdf"),
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    with app.app_context():
+        materials = repositories.list_materials(student_id)
+
+    assert len(materials) == 1
+    assert materials[0]["original_filename"] == "成绩单.pdf"
+    assert materials[0]["stored_filename"].endswith(".pdf")
+
+
+def test_successful_material_upload_redirects_to_materials_page(client, app):
+    with app.app_context():
+        student_id = create_sample_student()
+
+    response = client.post(
+        f"/students/{student_id}/materials",
+        data={
+            "action": "upload",
+            "uploader_type": "老师",
+            "category": "成绩单",
+            "material": (BytesIO(b"score details"), "score.txt"),
+        },
+        content_type="multipart/form-data",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == f"/students/{student_id}/materials"
 
 
 def test_disclaimer_confirmation_records_reason(client, app):

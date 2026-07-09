@@ -71,6 +71,9 @@ def materials(student_id):
                             "stored_filename": stored_filename,
                         },
                     )
+                    return redirect(
+                        url_for("questionnaires.materials", student_id=student_id)
+                    )
         elif action == "disclaimer":
             repositories.confirm_disclaimer(
                 student_id,

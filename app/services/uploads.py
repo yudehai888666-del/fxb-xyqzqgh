@@ -18,10 +18,19 @@ ALLOWED_EXTENSIONS = {
 
 
 def save_upload(student_id, file_storage):
-    safe_original = secure_filename(file_storage.filename)
-    suffix = f".{safe_original.rsplit('.', 1)[-1].lower()}" if "." in safe_original else ""
+    original_filename = file_storage.filename or ""
+    suffix = (
+        f".{original_filename.rsplit('.', 1)[-1].lower()}"
+        if "." in original_filename
+        else ""
+    )
     if suffix not in ALLOWED_EXTENSIONS:
         raise ValueError("不支持的文件类型")
+
+    safe_original = secure_filename(original_filename)
+    if not safe_original.endswith(suffix):
+        safe_stem = secure_filename(original_filename.rsplit(".", 1)[0]) or "material"
+        safe_original = f"{safe_stem}{suffix}"
 
     stored_name = f"student-{student_id}-{uuid4().hex}-{safe_original}"
     file_storage.save(current_app.config["UPLOAD_DIR"] / stored_name)
