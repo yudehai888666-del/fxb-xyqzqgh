@@ -12,56 +12,124 @@
     <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回档案</a>
   </section>
 
-  <form class="form-panel" method="post">
-    <div class="form-grid">
-      <label>
-        <span>来源渠道</span>
-        <textarea name="source_channel" rows="4">{{ notes["source_channel"] if notes else "" }}</textarea>
-      </label>
-      <label>
-        <span>咨询阶段</span>
-        <textarea name="consultation_stage" rows="4">{{ notes["consultation_stage"] if notes else "" }}</textarea>
-      </label>
-      <label>
-        <span>核心诉求</span>
-        <textarea name="core_request" rows="5">{{ notes["core_request"] if notes else "" }}</textarea>
-      </label>
-      <label>
-        <span>家庭与学生冲突</span>
-        <textarea name="family_student_conflict" rows="5">{{ notes["family_student_conflict"] if notes else "" }}</textarea>
-      </label>
-      <label>
-        <span>资源匹配程度</span>
-        <textarea name="resource_match_level" rows="5">{{ notes["resource_match_level"] if notes else "" }}</textarea>
-      </label>
-      <label>
-        <span>目标可行性</span>
-        <textarea name="goal_feasibility" rows="5">{{ notes["goal_feasibility"] if notes else "" }}</textarea>
-      </label>
-      <label>
-        <span>执行风险</span>
-        <textarea name="execution_risk" rows="5">{{ notes["execution_risk"] if notes else "" }}</textarea>
-      </label>
-      <label>
-        <span>学业风险</span>
-        <textarea name="academic_risk" rows="5">{{ notes["academic_risk"] if notes else "" }}</textarea>
-      </label>
-      <label>
-        <span>转专业可行性</span>
-        <textarea name="transfer_feasibility" rows="5">{{ notes["transfer_feasibility"] if notes else "" }}</textarea>
-      </label>
-      <label>
-        <span>服务建议</span>
-        <textarea name="service_suggestions" rows="5">{{ notes["service_suggestions"] if notes else "" }}</textarea>
-      </label>
-      <label>
-        <span>AI 生成关注点</span>
-        <textarea name="ai_generation_focus" rows="5">{{ notes["ai_generation_focus"] if notes else "" }}</textarea>
-      </label>
+  <form class="form-panel teacher-note-panel" method="post">
+    <label>
+      <span>综合访谈纪要</span>
+      <textarea
+        id="teacher-note-textarea"
+        name="combined_notes"
+        class="teacher-note-textarea"
+        rows="22"
+        placeholder="{{ note_placeholder }}"
+      >{{ combined_notes }}</textarea>
+    </label>
+
+    <div class="voice-toolbar">
+      <button class="button secondary" type="button" id="voice-input-button">
+        开始语音输入
+      </button>
+      <span class="muted" id="voice-input-status">语音输入依赖当前浏览器的麦克风和语音识别权限；按钮可用时即可开始听写。</span>
     </div>
+
     <div class="form-actions">
       <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>
       <button class="button" type="submit">保存老师记录</button>
     </div>
   </form>
+
+  <script>
+    (function () {
+      var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      var button = document.getElementById("voice-input-button");
+      var status = document.getElementById("voice-input-status");
+      var textarea = document.getElementById("teacher-note-textarea");
+
+      if (!SpeechRecognition) {
+        button.disabled = true;
+        button.classList.add("disabled");
+        status.textContent = "当前浏览器暂不支持网页语音输入；请用 Chrome 或 Edge 打开本页，或使用电脑系统自带听写后粘贴。";
+        return;
+      }
+
+      var recognition = new SpeechRecognition();
+      recognition.lang = "zh-CN";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      var isListening = false;
+      var committedText = "";
+      var heardSpeech = false;
+      var lastErrorMessage = "";
+
+      function appendText(text) {
+        var prefix = textarea.value && !textarea.value.endsWith("\n") ? "\n" : "";
+        textarea.value = textarea.value + prefix + text;
+        textarea.focus();
+      }
+
+      button.addEventListener("click", function () {
+        if (isListening) {
+          recognition.stop();
+          return;
+        }
+        committedText = "";
+        heardSpeech = false;
+        lastErrorMessage = "";
+        try {
+          recognition.start();
+        } catch (error) {
+          status.textContent = "语音输入没有成功启动，请稍后重试，或使用 Chrome/Edge 打开本页。";
+        }
+      });
+
+      recognition.onstart = function () {
+        isListening = true;
+        button.textContent = "停止语音输入";
+        status.textContent = "正在听写，请直接说出访谈内容。";
+      };
+
+      recognition.onresult = function (event) {
+        var interimText = "";
+        for (var i = event.resultIndex; i < event.results.length; i += 1) {
+          var transcript = event.results[i][0].transcript.trim();
+          if (transcript) {
+            heardSpeech = true;
+          }
+          if (event.results[i].isFinal) {
+            committedText += transcript + "。";
+          } else {
+            interimText += transcript;
+          }
+        }
+        if (committedText) {
+          appendText(committedText);
+          committedText = "";
+        }
+        status.textContent = interimText ? "识别中：" + interimText : "正在听写，请继续。";
+      };
+
+      recognition.onerror = function (event) {
+        var errorMessages = {
+          "not-allowed": "麦克风权限被拒绝，请在浏览器地址栏允许麦克风后重试。",
+          "service-not-allowed": "当前浏览器或网络环境不允许语音识别服务，请改用 Chrome 或 Edge。",
+          "no-speech": "没有识别到声音，请靠近麦克风后重试。",
+          "audio-capture": "没有检测到可用麦克风，请检查系统输入设备。",
+          "network": "语音识别服务网络连接失败，请稍后重试或改用手动输入。"
+        };
+        lastErrorMessage = errorMessages[event.error] || ("语音输入出错：" + event.error);
+        status.textContent = lastErrorMessage;
+      };
+
+      recognition.onend = function () {
+        isListening = false;
+        button.textContent = "开始语音输入";
+        if (lastErrorMessage) {
+          status.textContent = lastErrorMessage;
+        } else if (!heardSpeech) {
+          status.textContent = "语音输入未成功启动或没有识别到声音，请确认麦克风权限；若仍然如此，请用 Chrome/Edge 打开本页或改用系统听写。";
+        } else {
+          status.textContent = "语音输入已停止，可继续手动修改。";
+        }
+      };
+    })();
+  </script>
 {% endblock %}

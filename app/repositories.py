@@ -325,6 +325,7 @@ def save_teacher_notes(student_id, data):
         "transfer_feasibility",
         "service_suggestions",
         "ai_generation_focus",
+        "combined_notes",
     )
     existing = get_teacher_notes(student_id)
     values = {
@@ -339,9 +340,9 @@ def save_teacher_notes(student_id, data):
             student_id, source_channel, consultation_stage, core_request,
             family_student_conflict, resource_match_level, goal_feasibility,
             execution_risk, academic_risk, transfer_feasibility,
-            service_suggestions, ai_generation_focus
+            service_suggestions, ai_generation_focus, combined_notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(student_id) DO UPDATE SET
             source_channel = excluded.source_channel,
             consultation_stage = excluded.consultation_stage,
@@ -354,6 +355,7 @@ def save_teacher_notes(student_id, data):
             transfer_feasibility = excluded.transfer_feasibility,
             service_suggestions = excluded.service_suggestions,
             ai_generation_focus = excluded.ai_generation_focus,
+            combined_notes = excluded.combined_notes,
             updated_at = CURRENT_TIMESTAMP
         """,
         (
@@ -369,6 +371,7 @@ def save_teacher_notes(student_id, data):
             values["transfer_feasibility"],
             values["service_suggestions"],
             values["ai_generation_focus"],
+            values["combined_notes"],
         ),
     )
     db.commit()
@@ -447,3 +450,94 @@ def list_disclaimers(student_id):
         """,
         (student_id,),
     ).fetchall()
+
+
+REPLANNING_FIELDS = (
+    "original_goal",
+    "trigger_event",
+    "trigger_reason",
+    "responsibility_type",
+    "new_primary_goal",
+    "new_secondary_goal",
+    "new_third_goal",
+    "original_service_scope",
+    "completed_work",
+    "new_service_scope",
+    "fee_adjustment_type",
+    "additional_fee",
+    "refund_or_credit",
+    "fee_notes",
+    "agreement_terms",
+    "status",
+)
+
+
+def create_replanning_case(student_id, data):
+    db = get_db()
+    values = {field: data.get(field, "") for field in REPLANNING_FIELDS}
+    values["status"] = values["status"] or "草稿"
+    cursor = db.execute(
+        """
+        INSERT INTO replanning_cases (
+            student_id, original_goal, trigger_event, trigger_reason,
+            responsibility_type, new_primary_goal, new_secondary_goal,
+            new_third_goal, original_service_scope, completed_work,
+            new_service_scope, fee_adjustment_type, additional_fee,
+            refund_or_credit, fee_notes, agreement_terms, status
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            student_id,
+            values["original_goal"],
+            values["trigger_event"],
+            values["trigger_reason"],
+            values["responsibility_type"],
+            values["new_primary_goal"],
+            values["new_secondary_goal"],
+            values["new_third_goal"],
+            values["original_service_scope"],
+            values["completed_work"],
+            values["new_service_scope"],
+            values["fee_adjustment_type"],
+            values["additional_fee"],
+            values["refund_or_credit"],
+            values["fee_notes"],
+            values["agreement_terms"],
+            values["status"],
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def get_replanning_case(case_id):
+    return get_db().execute(
+        "SELECT * FROM replanning_cases WHERE id = ?",
+        (case_id,),
+    ).fetchone()
+
+
+def list_replanning_cases(student_id):
+    return get_db().execute(
+        """
+        SELECT *
+        FROM replanning_cases
+        WHERE student_id = ?
+        ORDER BY updated_at DESC, id DESC
+        """,
+        (student_id,),
+    ).fetchall()
+
+
+def update_replanning_status(case_id, status):
+    db = get_db()
+    db.execute(
+        """
+        UPDATE replanning_cases
+        SET status = ?, updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
+        WHERE id = ?
+        """,
+        (status, case_id),
+    )
+    db.commit()

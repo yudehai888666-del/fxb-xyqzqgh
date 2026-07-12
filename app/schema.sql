@@ -102,5 +102,29 @@ CREATE TABLE IF NOT EXISTS teacher_notes (
     transfer_feasibility TEXT NOT NULL DEFAULT '',
     service_suggestions TEXT NOT NULL DEFAULT '',
     ai_generation_focus TEXT NOT NULL DEFAULT '',
+    combined_notes TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS replanning_cases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    original_goal TEXT NOT NULL DEFAULT '',
+    trigger_event TEXT NOT NULL DEFAULT '',
+    trigger_reason TEXT NOT NULL DEFAULT '',
+    responsibility_type TEXT NOT NULL DEFAULT '',
+    new_primary_goal TEXT NOT NULL DEFAULT '',
+    new_secondary_goal TEXT NOT NULL DEFAULT '',
+    new_third_goal TEXT NOT NULL DEFAULT '',
+    original_service_scope TEXT NOT NULL DEFAULT '',
+    completed_work TEXT NOT NULL DEFAULT '',
+    new_service_scope TEXT NOT NULL DEFAULT '',
+    fee_adjustment_type TEXT NOT NULL DEFAULT '',
+    additional_fee TEXT NOT NULL DEFAULT '',
+    refund_or_credit TEXT NOT NULL DEFAULT '',
+    fee_notes TEXT NOT NULL DEFAULT '',
+    agreement_terms TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT '草稿',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
 );

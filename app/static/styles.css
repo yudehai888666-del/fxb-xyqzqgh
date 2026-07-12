@@ -312,3 +312,10 @@ input:focus {
   margin: 0;
   font: 14px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+
+.text-muted-sm {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+

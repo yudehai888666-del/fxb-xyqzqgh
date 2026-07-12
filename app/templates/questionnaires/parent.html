@@ -1,68 +1,477 @@
 {% extends "base.html" %}
 
-{% block title %}主要家长问卷：{{ student.name }} - 学业规划工作台{% endblock %}
+{% block title %}家长问卷：{{ student.name }} - 学业规划工作台{% endblock %}
+
+{% set parent_name = questionnaire["parent_name"] if questionnaire else (parent_contact.name if parent_contact else "") %}
+{% set relationship = questionnaire["relationship"] if questionnaire else (parent_contact.relationship if parent_contact else "") %}
+{% set parent_phone = questionnaire["parent_phone"] if questionnaire else (parent_contact.phone if parent_contact else "") %}
+{% set communication_method = questionnaire["communication_method"] if questionnaire else (parent_contact.communication_method if parent_contact else "微信") %}
 
 {% block content %}
-  <section class="page-heading">
-    <div>
-      <p class="eyebrow">家长问卷</p>
-      <h1>主要家长问卷：{{ student.name }}</h1>
-      <p class="muted">记录主要家长的沟通信息、家庭资源、目标优先级与当前关注点。</p>
-    </div>
-    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回档案</a>
-  </section>
+<div class="q-page">
 
-  <form class="form-panel" method="post">
-    {% set parent_name = questionnaire["parent_name"] if questionnaire else (parent_contact.name if parent_contact else "") %}
-    {% set relationship = questionnaire["relationship"] if questionnaire else (parent_contact.relationship if parent_contact else "") %}
-    {% set parent_phone = questionnaire["parent_phone"] if questionnaire else (parent_contact.phone if parent_contact else "") %}
-    {% set communication_method = questionnaire["communication_method"] if questionnaire else (parent_contact.communication_method if parent_contact else "微信") %}
-    <div class="form-grid">
-      <label>
-        <span>家长姓名</span>
-        <input name="parent_name" value="{{ parent_name }}" required>
-      </label>
-      <label>
-        <span>与学生关系</span>
-        <input name="relationship" value="{{ relationship }}" placeholder="请输入与学生的关系，如父亲、母亲、其他监护人" required>
-      </label>
-      <label>
-        <span>家长联系方式</span>
-        <input name="parent_phone" type="tel" value="{{ parent_phone }}">
-      </label>
-      <label>
-        <span>常用沟通方式</span>
-        <input name="communication_method" value="{{ communication_method }}">
-      </label>
-      <label>
-        <span>家庭资源</span>
-        <small class="field-note">可填写家庭可投入的时间、预算、行业资源、人脉资源、是否支持考研/留学/就业专项投入等。</small>
-        <textarea name="family_resources" rows="5">{{ questionnaire["family_resources"] if questionnaire else "" }}</textarea>
-      </label>
-      <label>
-        <span>目标优先级</span>
-        <small class="field-note">请按重要程度写出家庭期待，例如保研第一、考研第二、就业第三，也可以写“暂不确定”。</small>
-        <textarea name="target_priorities" rows="5">{{ questionnaire["target_priorities"] if questionnaire else "" }}</textarea>
-      </label>
-      <label>
-        <span>家长对孩子的观察</span>
-        <small class="field-note">可记录学习习惯、自律情况、沟通状态、抗压能力、专业满意度等。</small>
-        <textarea name="parent_observations" rows="5">{{ questionnaire["parent_observations"] if questionnaire else "" }}</textarea>
-      </label>
-      <label>
-        <span>当前担忧</span>
-        <small class="field-note">可填写目前最担心的问题，例如挂科风险、专业不适应、转专业窗口、英语证书、执行力或未来方向不清晰。</small>
-        <textarea name="current_concerns" rows="5">{{ questionnaire["current_concerns"] if questionnaire else "" }}</textarea>
-      </label>
-      <label>
-        <span>投入意愿</span>
-        <small class="field-note">可说明家庭愿意投入的支持方式，例如时间陪伴、基础规划、学科辅导、竞赛科研、语言培训或后续专项服务。</small>
-        <textarea name="investment_willingness" rows="5">{{ questionnaire["investment_willingness"] if questionnaire else "" }}</textarea>
-      </label>
+  <!-- 顶部标题 -->
+  <div class="q-header">
+    <div class="q-header-left">
+      <div class="q-breadcrumb">
+        <a href="{{ url_for('students.detail', student_id=student.id) }}">{{ student.name }}</a>
+        <span>›</span>
+        <span>家长问卷</span>
+      </div>
+      <h1 class="q-title">
+        <span class="q-title-icon">👨‍👩‍👧</span>
+        主要家长问卷
+      </h1>
+      <p class="q-subtitle">记录主要家长的基本信息、家庭资源、目标优先级与当前关注点，帮助规划老师更精准地制定学业方案。</p>
     </div>
-    <div class="form-actions">
-      <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>
-      <button class="button" type="submit">保存家长问卷</button>
+    <a class="q-btn-back" href="{{ url_for('students.detail', student_id=student.id) }}">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      返回档案
+    </a>
+  </div>
+
+  <!-- 进度提示 -->
+  <div class="q-progress-bar">
+    <div class="q-progress-inner">
+      <span class="q-progress-label">📋 共 9 个问题，填写越详细规划越准确</span>
+      <span class="q-progress-tip">所有字段均可选填，请据实填写</span>
     </div>
+  </div>
+
+  <form method="post">
+
+    <!-- ── 第一组：家长基本信息 ── -->
+    <div class="q-section">
+      <div class="q-section-header q-color-blue">
+        <div class="q-section-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div>
+          <h2 class="q-section-title">一、基本联系信息</h2>
+          <p class="q-section-desc">家长姓名、与学生关系及联系方式</p>
+        </div>
+      </div>
+
+      <div class="q-fields-2col">
+        <div class="q-field">
+          <label class="q-label" for="parent_name">
+            家长姓名
+            <span class="q-required">*</span>
+          </label>
+          <input class="q-input" id="parent_name" name="parent_name"
+                 value="{{ parent_name }}" placeholder="请输入家长姓名" required>
+        </div>
+        <div class="q-field">
+          <label class="q-label" for="relationship">
+            与学生关系
+            <span class="q-required">*</span>
+          </label>
+          <input class="q-input" id="relationship" name="relationship"
+                 value="{{ relationship }}" placeholder="例如：父亲、母亲、其他监护人" required>
+        </div>
+        <div class="q-field">
+          <label class="q-label" for="parent_phone">家长联系电话</label>
+          <input class="q-input" id="parent_phone" name="parent_phone" type="tel"
+                 value="{{ parent_phone }}" placeholder="请输入手机号码">
+        </div>
+        <div class="q-field">
+          <label class="q-label" for="communication_method">常用沟通方式</label>
+          <input class="q-input" id="communication_method" name="communication_method"
+                 value="{{ communication_method }}" placeholder="例如：微信、电话、企业微信">
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 第二组：家庭背景 ── -->
+    <div class="q-section">
+      <div class="q-section-header q-color-purple">
+        <div class="q-section-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <div>
+          <h2 class="q-section-title">二、家庭背景与资源</h2>
+          <p class="q-section-desc">帮助老师了解家庭可支持的资源和投入能力</p>
+        </div>
+      </div>
+
+      <div class="q-fields-single">
+        <div class="q-card-field q-accent-purple">
+          <div class="q-card-label">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            家庭资源
+          </div>
+          <p class="q-helper">可填写家庭可投入的时间、预算范围、行业人脉、是否支持考研/留学/就业专项投入等。</p>
+          <textarea class="q-textarea" name="family_resources" rows="6"
+            placeholder="例如：父亲在金融行业工作，有一定行业资源；家庭预算充足，支持考研全程投入；母亲可全程陪伴……">{{ questionnaire["family_resources"] if questionnaire else "" }}</textarea>
+        </div>
+
+        <div class="q-card-field q-accent-purple">
+          <div class="q-card-label">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            投入意愿
+          </div>
+          <p class="q-helper">可说明家庭愿意投入的支持方式，例如时间陪伴、学科辅导、竞赛科研、语言培训或后续专项服务。</p>
+          <textarea class="q-textarea" name="investment_willingness" rows="6"
+            placeholder="例如：愿意投入基础规划+学科辅导；希望参加科研训练；预算范围大约……">{{ questionnaire["investment_willingness"] if questionnaire else "" }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 第三组：目标与观察 ── -->
+    <div class="q-section">
+      <div class="q-section-header q-color-green">
+        <div class="q-section-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        </div>
+        <div>
+          <h2 class="q-section-title">三、目标期待与孩子观察</h2>
+          <p class="q-section-desc">记录家庭对孩子未来方向的期待，以及家长视角下孩子的状态</p>
+        </div>
+      </div>
+
+      <div class="q-fields-single">
+        <div class="q-card-field q-accent-green">
+          <div class="q-card-label">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            目标优先级
+          </div>
+          <p class="q-helper">请按重要程度写出家庭期待，例如保研第一、考研第二、就业第三，也可以写「暂不确定」。</p>
+          <textarea class="q-textarea" name="target_priorities" rows="6"
+            placeholder="例如：第一希望能保研985院校，第二考研冲211，第三考虑出国……">{{ questionnaire["target_priorities"] if questionnaire else "" }}</textarea>
+        </div>
+
+        <div class="q-card-field q-accent-green">
+          <div class="q-card-label">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            家长对孩子的观察
+          </div>
+          <p class="q-helper">可记录孩子的学习习惯、自律情况、沟通状态、抗压能力和专业满意度等，您的观察非常重要。</p>
+          <textarea class="q-textarea" name="parent_observations" rows="6"
+            placeholder="例如：孩子自律性较强，但容易焦虑；对现在的专业不太感兴趣；和老师沟通积极……">{{ questionnaire["parent_observations"] if questionnaire else "" }}</textarea>
+        </div>
+
+        <div class="q-card-field q-accent-amber">
+          <div class="q-card-label">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            当前担忧
+          </div>
+          <p class="q-helper">可填写目前最担心的问题，例如挂科风险、专业不适应、转专业窗口、英语证书或执行力等。</p>
+          <textarea class="q-textarea" name="current_concerns" rows="6"
+            placeholder="例如：担心大二绩点跟不上；不清楚要不要转专业；英语四级还没过……">{{ questionnaire["current_concerns"] if questionnaire else "" }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- 提交栏 -->
+    <div class="q-actions">
+      <a class="q-btn-cancel" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>
+      <button class="q-btn-submit" type="submit">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        保存家长问卷
+      </button>
+    </div>
+
   </form>
+</div>
+
+<style>
+/* ── 问卷页通用样式 ── */
+.q-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 0 80px;
+}
+
+/* 顶部 */
+.q-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.q-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.q-breadcrumb a { color: var(--primary); font-weight: 500; }
+
+.q-title {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.q-title-icon { font-size: 24px; }
+
+.q-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 560px;
+}
+
+.q-btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.q-btn-back:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(31,111,235,0.1);
+  text-decoration: none;
+}
+
+/* 进度条 */
+.q-progress-bar {
+  padding: 14px 20px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+}
+.q-progress-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.q-progress-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d4ed8;
+}
+.q-progress-tip {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Section 卡片 */
+.q-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.q-section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.q-section-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.q-color-blue  .q-section-icon { background: #dbeafe; color: #2563eb; }
+.q-color-purple .q-section-icon { background: #ede9fe; color: #7c3aed; }
+.q-color-green .q-section-icon { background: #dcfce7; color: #16a34a; }
+
+.q-section-title {
+  margin: 0 0 3px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.q-section-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* 字段布局 */
+.q-fields-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.q-fields-2col .q-field {
+  padding: 20px 24px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.q-fields-2col .q-field:nth-child(2n) { border-right: none; }
+.q-fields-2col .q-field:last-child,
+.q-fields-2col .q-field:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+
+.q-fields-single {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 卡片字段（大文本区） */
+.q-card-field {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+  border-left: 4px solid transparent;
+  transition: background 0.15s;
+}
+.q-card-field:last-child { border-bottom: none; }
+.q-card-field:hover { background: #fafbfc; }
+
+.q-accent-purple { border-left-color: #7c3aed; }
+.q-accent-green  { border-left-color: #16a34a; }
+.q-accent-amber  { border-left-color: #d97706; }
+
+.q-card-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 5px;
+}
+
+.q-helper {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* 输入控件 */
+.q-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+.q-required {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.q-input {
+  width: 100%;
+  height: 42px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: #f9fafc;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.q-input:focus {
+  border-color: var(--primary);
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31,111,235,0.12);
+}
+
+.q-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: #f9fafc;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.7;
+  resize: vertical;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.q-textarea:focus {
+  border-color: var(--primary);
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31,111,235,0.12);
+}
+
+/* 提交栏 */
+.q-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin-top: 4px;
+}
+
+.q-btn-cancel {
+  padding: 10px 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s, border-color 0.15s;
+}
+.q-btn-cancel:hover {
+  color: var(--text);
+  border-color: #9ca3af;
+  text-decoration: none;
+}
+
+.q-btn-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 24px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(31,111,235,0.3);
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+.q-btn-submit:hover {
+  box-shadow: 0 4px 16px rgba(31,111,235,0.4);
+  transform: translateY(-1px);
+}
+.q-btn-submit:active { transform: translateY(0); }
+
+/* 响应式 */
+@media (max-width: 680px) {
+  .q-header { flex-direction: column; }
+  .q-fields-2col { grid-template-columns: 1fr; }
+  .q-fields-2col .q-field { border-right: none; }
+  .q-progress-inner { flex-direction: column; align-items: flex-start; gap: 4px; }
+}
+</style>
 {% endblock %}

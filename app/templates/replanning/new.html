@@ -1,0 +1,704 @@
+{% extends "base.html" %}
+
+{% block title %}新增重规划：{{ student.name }} - 学业规划工作台{% endblock %}
+
+{% block content %}
+<div class="rp-page">
+
+  <!-- 顶部面包屑 + 标题 -->
+  <div class="rp-header">
+    <div class="rp-header-left">
+      <div class="rp-breadcrumb">
+        <a href="{{ url_for('students.detail', student_id=student.id) }}">{{ student.name }}</a>
+        <span class="rp-breadcrumb-sep">›</span>
+        <span>执行变更</span>
+      </div>
+      <h1 class="rp-title">新增重规划与补充协议</h1>
+      <p class="rp-subtitle">记录原第一目标无法推进后的新路径、服务范围、责任边界和费用调整</p>
+    </div>
+    <a class="rp-btn-back" href="{{ url_for('students.detail', student_id=student.id) }}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      返回档案
+    </a>
+  </div>
+
+  <!-- 步骤进度条 -->
+  <div class="rp-steps">
+    <div class="rp-step active">
+      <div class="rp-step-num">1</div>
+      <span>触发背景</span>
+    </div>
+    <div class="rp-step-line"></div>
+    <div class="rp-step active">
+      <div class="rp-step-num">2</div>
+      <span>新目标路径</span>
+    </div>
+    <div class="rp-step-line"></div>
+    <div class="rp-step active">
+      <div class="rp-step-num">3</div>
+      <span>服务与费用</span>
+    </div>
+  </div>
+
+  <form method="post">
+
+    <!-- ── 第一块：触发背景 ── -->
+    <div class="rp-card">
+      <div class="rp-card-header">
+        <div class="rp-card-icon rp-icon-trigger">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div>
+          <h2 class="rp-card-title">一、触发背景</h2>
+          <p class="rp-card-desc">记录原方案为何无法继续推进</p>
+        </div>
+      </div>
+
+      <div class="rp-fields-row">
+        <div class="rp-field">
+          <label class="rp-label" for="original_goal">原第一目标</label>
+          <textarea class="rp-textarea" id="original_goal" name="original_goal" rows="4"
+            placeholder="例如：保研第一目标，目标院校/专业为……">{{ form.original_goal if form else '' }}</textarea>
+        </div>
+        <div class="rp-field">
+          <label class="rp-label" for="trigger_event">触发事件</label>
+          <textarea class="rp-textarea" id="trigger_event" name="trigger_event" rows="4"
+            placeholder="例如：出现挂科、排名不足、政策变化、材料无法按期完成等">{{ form.trigger_event if form else '' }}</textarea>
+        </div>
+        <div class="rp-field">
+          <label class="rp-label" for="trigger_reason">原因说明</label>
+          <textarea class="rp-textarea" id="trigger_reason" name="trigger_reason" rows="4"
+            placeholder="说明一志愿无法继续推进的具体原因和证据">{{ form.trigger_reason if form else '' }}</textarea>
+        </div>
+      </div>
+
+      <div class="rp-field rp-field-inline">
+        <label class="rp-label" for="responsibility_type">责任归因</label>
+        <div class="rp-select-wrap">
+          <select class="rp-select" id="responsibility_type" name="responsibility_type">
+            <option value="学生执行原因">学生执行原因</option>
+            <option value="家庭决策变化">家庭决策变化</option>
+            <option value="学校政策变化">学校政策变化</option>
+            <option value="外部不可控因素">外部不可控因素</option>
+            <option value="双方协商调整">双方协商调整</option>
+          </select>
+          <svg class="rp-select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 第二块：新目标路径 ── -->
+    <div class="rp-card">
+      <div class="rp-card-header">
+        <div class="rp-card-icon rp-icon-goal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        </div>
+        <div>
+          <h2 class="rp-card-title">二、新目标路径</h2>
+          <p class="rp-card-desc">设定调整后的主要方向和备选路径</p>
+        </div>
+      </div>
+
+      <div class="rp-goal-grid">
+        <div class="rp-goal-item rp-goal-primary">
+          <div class="rp-goal-badge">主目标</div>
+          <label class="rp-label" for="new_primary_goal">新第一目标</label>
+          <textarea class="rp-textarea" id="new_primary_goal" name="new_primary_goal" rows="5"
+            placeholder="例如：转入考研路径，目标专业为……">{{ form.new_primary_goal if form else '' }}</textarea>
+        </div>
+        <div class="rp-goal-item">
+          <div class="rp-goal-badge rp-badge-secondary">备选 A</div>
+          <label class="rp-label" for="new_secondary_goal">新第二目标</label>
+          <textarea class="rp-textarea" id="new_secondary_goal" name="new_secondary_goal" rows="5"
+            placeholder="例如：就业/留学/校内项目等备选方向">{{ form.new_secondary_goal if form else '' }}</textarea>
+        </div>
+        <div class="rp-goal-item">
+          <div class="rp-goal-badge rp-badge-tertiary">兜底</div>
+          <label class="rp-label" for="new_third_goal">新第三目标</label>
+          <textarea class="rp-textarea" id="new_third_goal" name="new_third_goal" rows="5"
+            placeholder="例如：求职兜底、二战、转专业替代路径等">{{ form.new_third_goal if form else '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 第三块：服务范围 ── -->
+    <div class="rp-card">
+      <div class="rp-card-header">
+        <div class="rp-card-icon rp-icon-service">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </div>
+        <div>
+          <h2 class="rp-card-title">三、服务范围与费用</h2>
+          <p class="rp-card-desc">明确原有工作交付和新方案的服务边界</p>
+        </div>
+      </div>
+
+      <!-- 服务对比 -->
+      <div class="rp-scope-compare">
+        <div class="rp-scope-col rp-scope-old">
+          <div class="rp-scope-tag">原方案</div>
+          <div class="rp-field">
+            <label class="rp-label" for="original_service_scope">原服务范围</label>
+            <textarea class="rp-textarea" id="original_service_scope" name="original_service_scope" rows="5"
+              placeholder="记录原规划已约定的基础服务和专项服务">{{ form.original_service_scope if form else '' }}</textarea>
+          </div>
+          <div class="rp-field">
+            <label class="rp-label" for="completed_work">已完成工作</label>
+            <textarea class="rp-textarea" id="completed_work" name="completed_work" rows="5"
+              placeholder="记录已完成的诊断、复盘、辅导、材料、科研竞赛等工作">{{ form.completed_work if form else '' }}</textarea>
+          </div>
+        </div>
+        <div class="rp-scope-arrow">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </div>
+        <div class="rp-scope-col rp-scope-new">
+          <div class="rp-scope-tag rp-scope-tag-new">新方案</div>
+          <div class="rp-field">
+            <label class="rp-label" for="new_service_scope">新服务范围</label>
+            <textarea class="rp-textarea" id="new_service_scope" name="new_service_scope" rows="12"
+              placeholder="说明切换路径后新增、减少或保留的服务内容">{{ form.new_service_scope if form else '' }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- 费用调整 -->
+      <div class="rp-fee-section">
+        <h3 class="rp-fee-title">费用调整</h3>
+        <div class="rp-fee-grid">
+          <div class="rp-field">
+            <label class="rp-label" for="fee_adjustment_type">调整方式</label>
+            <div class="rp-select-wrap">
+              <select class="rp-select" id="fee_adjustment_type" name="fee_adjustment_type">
+                <option value="不调整费用">不调整费用</option>
+                <option value="新增专项费用">新增专项费用</option>
+                <option value="原费用抵扣">原费用抵扣</option>
+                <option value="部分退费">部分退费</option>
+                <option value="另行报价确认">另行报价确认</option>
+              </select>
+              <svg class="rp-select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+          <div class="rp-field">
+            <label class="rp-label" for="additional_fee">新增费用</label>
+            <input class="rp-input" id="additional_fee" name="additional_fee"
+              placeholder="例如：3000元 / 暂无新增"
+              value="{{ form.additional_fee if form else '' }}">
+          </div>
+          <div class="rp-field">
+            <label class="rp-label" for="refund_or_credit">抵扣或退费</label>
+            <input class="rp-input" id="refund_or_credit" name="refund_or_credit"
+              placeholder="例如：原专项费用抵扣至考研规划"
+              value="{{ form.refund_or_credit if form else '' }}">
+          </div>
+        </div>
+        <div class="rp-field" style="margin-top: 16px;">
+          <label class="rp-label" for="fee_notes">费用说明</label>
+          <textarea class="rp-textarea" id="fee_notes" name="fee_notes" rows="4"
+            placeholder="说明费用变化依据、启动条件、付款节点、未执行服务如何处理">{{ form.fee_notes if form else '' }}</textarea>
+        </div>
+      </div>
+
+      <!-- 其他约定 -->
+      <div class="rp-other-section">
+        <div class="rp-other-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div style="flex: 1;">
+          <label class="rp-label" for="agreement_terms">其他约定</label>
+          <textarea class="rp-textarea" id="agreement_terms" name="agreement_terms" rows="5"
+            placeholder="补充双方需要确认的责任边界、材料要求、复盘时间、再次变更条件等">{{ form.agreement_terms if form else '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- 提交栏 -->
+    <div class="rp-actions">
+      <a class="rp-btn-cancel" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>
+      <button class="rp-btn-submit" type="submit">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        生成补充协议草稿
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<style>
+/* ── 重规划页面独立样式 ── */
+.rp-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 0 64px;
+}
+
+/* 顶部标题区 */
+.rp-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.rp-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.rp-breadcrumb a {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.rp-breadcrumb-sep {
+  color: var(--line);
+}
+
+.rp-title {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+
+.rp-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.rp-btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+
+.rp-btn-back:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(31,111,235,0.1);
+  text-decoration: none;
+}
+
+/* 步骤条 */
+.rp-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 28px;
+  padding: 16px 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.rp-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.rp-step.active {
+  color: var(--text);
+}
+
+.rp-step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rp-step.active .rp-step-num {
+  background: var(--primary);
+  color: #fff;
+}
+
+.rp-step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--line);
+  margin: 0 16px;
+  min-width: 40px;
+}
+
+/* 卡片 */
+.rp-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.rp-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rp-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rp-icon-trigger { background: #fff0f0; color: #dc2626; }
+.rp-icon-goal    { background: #f0f7ff; color: var(--primary); }
+.rp-icon-service { background: #f0fdf4; color: #16a34a; }
+
+.rp-card-title {
+  margin: 0 0 3px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.rp-card-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* 通用字段 */
+.rp-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.rp-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f9fafc;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.rp-textarea:focus {
+  border-color: var(--primary);
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31,111,235,0.12);
+}
+
+.rp-input {
+  width: 100%;
+  height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f9fafc;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.rp-input:focus {
+  border-color: var(--primary);
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31,111,235,0.12);
+}
+
+.rp-select-wrap {
+  position: relative;
+  display: block;
+}
+
+.rp-select {
+  width: 100%;
+  height: 42px;
+  padding: 9px 36px 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f9fafc;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rp-select:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31,111,235,0.12);
+}
+
+.rp-select-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--muted);
+}
+
+.rp-field { display: flex; flex-direction: column; }
+
+/* 触发背景 — 三列 */
+.rp-fields-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.rp-field-inline {
+  max-width: 280px;
+}
+
+/* 目标三列 */
+.rp-goal-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 16px;
+}
+
+.rp-goal-item {
+  position: relative;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f9fafc;
+}
+
+.rp-goal-primary {
+  background: linear-gradient(135deg, #f0f7ff 0%, #e8f3ff 100%);
+  border-color: #bfdbfe;
+}
+
+.rp-goal-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.rp-badge-secondary { background: #6b7280; }
+.rp-badge-tertiary  { background: #9ca3af; }
+
+/* 服务对比 */
+.rp-scope-compare {
+  display: flex;
+  gap: 0;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.rp-scope-col {
+  flex: 1;
+  padding: 20px;
+  border-radius: 12px;
+  background: #f9fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rp-scope-old { background: #fafafa; border: 1px solid var(--line); }
+.rp-scope-new { background: #f0fdf4; border: 1px solid #bbf7d0; }
+
+.rp-scope-arrow {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  color: var(--muted);
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.rp-scope-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 20px;
+  background: var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  width: fit-content;
+}
+
+.rp-scope-tag-new {
+  background: #16a34a;
+  color: #fff;
+}
+
+/* 费用区 */
+.rp-fee-section {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffbf0;
+  margin-bottom: 20px;
+}
+
+.rp-fee-title {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rp-fee-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  background: #f59e0b;
+  border-radius: 2px;
+}
+
+.rp-fee-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 16px;
+}
+
+/* 其他约定 */
+.rp-other-section {
+  display: flex;
+  gap: 14px;
+  padding: 20px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: #f9fafc;
+}
+
+.rp-other-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #e0e7ff;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+/* 提交栏 */
+.rp-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 20px 32px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.rp-btn-cancel {
+  padding: 10px 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.rp-btn-cancel:hover {
+  color: var(--text);
+  border-color: #9ca3af;
+  text-decoration: none;
+}
+
+.rp-btn-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 24px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(31,111,235,0.35);
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+
+.rp-btn-submit:hover {
+  box-shadow: 0 4px 16px rgba(31,111,235,0.45);
+  transform: translateY(-1px);
+}
+
+.rp-btn-submit:active { transform: translateY(0); }
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .rp-header { flex-direction: column; }
+  .rp-fields-row { grid-template-columns: 1fr; }
+  .rp-goal-grid { grid-template-columns: 1fr; }
+  .rp-fee-grid { grid-template-columns: 1fr; }
+  .rp-scope-compare { flex-direction: column; }
+  .rp-scope-arrow { transform: rotate(90deg); align-self: center; padding: 8px 0; }
+  .rp-card { padding: 20px 16px; }
+  .rp-steps { padding: 12px 16px; }
+  .rp-step span { display: none; }
+}
+</style>
+{% endblock %}

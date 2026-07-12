@@ -75,7 +75,6 @@ def get_student_completion(student_id):
         "ready_for_ai": (
             has_student_questionnaire
             and has_parent_questionnaire
-            and has_teacher_notes
             and (has_materials or has_substantive_disclaimer)
         ),
     }
