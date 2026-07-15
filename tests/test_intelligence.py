@@ -330,8 +330,32 @@ def publish_knowledge(kind, record_id):
     repositories.update_knowledge_status(kind, record_id, "已发布")
 
 
+def publish_job_skill_requirement(job_id, skill_id, actor_id, **overrides):
+    data = {
+        "job_id": job_id,
+        "skill_id": skill_id,
+        "importance_level": "核心",
+        "proficiency_level": "掌握",
+        "evidence_note": "测试岗位技能证据",
+        "source_url": f"https://example.test/jobs/{job_id}/skills/{skill_id}",
+        "confidence_level": "中",
+        "sample_size": 30,
+        "last_verified_at": "2026-07-15",
+        "next_check_at": "2099-12-31",
+        "owner_user_id": actor_id,
+        "reviewer_user_id": actor_id,
+        "limitation_note": "仅供自动化测试，不代表真实市场",
+    }
+    data.update(overrides)
+    link_id = repositories.create_job_skill_link(data, actor_id)
+    repositories.submit_job_skill_link(link_id)
+    repositories.review_job_skill_link(link_id, "已发布")
+    return link_id
+
+
 def test_student_matching_calculates_weighted_skill_gap_and_published_trends(app):
     with app.app_context():
+        actor_id = create_user("admin", "matching-admin")
         student_id = repositories.create_student(
             {
                 "name": "匹配测试学生", "gender": "女", "enrollment_year": 2026,
@@ -348,11 +372,11 @@ def test_student_matching_calculates_weighted_skill_gap_and_published_trends(app
                                 ("skill", sql_id), ("skill", stats_id)):
             publish_knowledge(kind, record_id)
         repositories.create_major_job_link({"major_id": major_id, "job_id": job_id})
-        repositories.create_job_skill_link(
-            {"job_id": job_id, "skill_id": sql_id, "importance_level": "核心", "proficiency_level": "熟练"}
+        publish_job_skill_requirement(
+            job_id, sql_id, actor_id, importance_level="核心", proficiency_level="熟练"
         )
-        repositories.create_job_skill_link(
-            {"job_id": job_id, "skill_id": stats_id, "importance_level": "重要", "proficiency_level": "掌握"}
+        publish_job_skill_requirement(
+            job_id, stats_id, actor_id, importance_level="重要", proficiency_level="掌握"
         )
         repositories.upsert_student_skill_assessment(
             student_id, {"skill_id": sql_id, "current_level": 2, "evidence_note": "课程项目"}
@@ -412,8 +436,8 @@ def test_admin_can_set_target_and_skill_then_view_visual_report(tmp_path):
         skill_id = repositories.create_knowledge_skill({"name": "用户研究"})
         publish_knowledge("job", job_id)
         publish_knowledge("skill", skill_id)
-        repositories.create_job_skill_link(
-            {"job_id": job_id, "skill_id": skill_id, "importance_level": "核心", "proficiency_level": "掌握"}
+        publish_job_skill_requirement(
+            job_id, skill_id, admin_id, importance_level="核心", proficiency_level="掌握"
         )
 
     login(client, "admin")

@@ -29,6 +29,12 @@ def init_db():
     db.commit()
 
 
+def _add_column_if_missing(db, table, column, definition):
+    columns = {row["name"] for row in db.execute(f"PRAGMA table_info({table})")}
+    if column not in columns:
+        db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
 def _run_lightweight_migrations(db):
     teacher_note_columns = {
         row["name"] for row in db.execute("PRAGMA table_info(teacher_notes)").fetchall()
@@ -57,6 +63,20 @@ def _run_lightweight_migrations(db):
         db.execute(
             "ALTER TABLE materials ADD COLUMN visibility TEXT NOT NULL DEFAULT '老师内部'"
         )
+
+    job_skill_columns = {
+        "source_id": "INTEGER",
+        "confidence_level": "TEXT NOT NULL DEFAULT ''",
+        "sample_size": "INTEGER NOT NULL DEFAULT 0",
+        "last_verified_at": "TEXT NOT NULL DEFAULT ''",
+        "next_check_at": "TEXT NOT NULL DEFAULT ''",
+        "owner_user_id": "INTEGER",
+        "reviewer_user_id": "INTEGER",
+        "status": "TEXT NOT NULL DEFAULT '草稿'",
+        "limitation_note": "TEXT NOT NULL DEFAULT ''",
+    }
+    for column, definition in job_skill_columns.items():
+        _add_column_if_missing(db, "job_skill_links", column, definition)
 
     db.execute(
         """

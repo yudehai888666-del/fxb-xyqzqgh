@@ -26,12 +26,16 @@ def _audit(action, target_type, target_id=None, details=""):
 
 @intelligence_bp.get("/knowledge")
 def knowledge_index():
+    can_edit = g.current_user and g.current_user["role"] in ("admin", "teacher")
     return render_template(
         "intelligence/knowledge.html",
         majors=repositories.list_knowledge_majors(),
         jobs=repositories.list_knowledge_jobs(),
         skills=repositories.list_knowledge_skills(),
         graph_links=repositories.list_knowledge_graph_links(),
+        job_skill_links=repositories.list_job_skill_links(),
+        sources=repositories.list_intelligence_sources() if can_edit else [],
+        users=repositories.list_users() if can_edit else [],
         message=request.args.get("message", ""),
     )
 
@@ -90,9 +94,37 @@ def create_major_job_link():
 def create_job_skill_link():
     if not request.form.get("job_id") or not request.form.get("skill_id"):
         return redirect(url_for("intelligence.knowledge_index", message="请选择岗位和技能"))
-    record_id = repositories.create_job_skill_link(request.form, _actor_id())
+    try:
+        record_id = repositories.create_job_skill_link(request.form, _actor_id())
+    except ValueError as exc:
+        return redirect(url_for("intelligence.knowledge_index", message=str(exc)))
     _audit("link_job_skill", "job_skill_link", record_id)
-    return redirect(url_for("intelligence.knowledge_index", message="岗位与技能关系已保存"))
+    return redirect(url_for("intelligence.knowledge_index", message="岗位与技能关系已保存为草稿"))
+
+
+@intelligence_bp.post("/knowledge/job-skill-links/<int:link_id>/submit")
+@role_required("admin", "teacher")
+def submit_job_skill_link(link_id):
+    try:
+        repositories.submit_job_skill_link(link_id)
+    except ValueError as exc:
+        return redirect(url_for("intelligence.knowledge_index", message=str(exc)))
+    _audit("submit_job_skill_link", "job_skill_link", link_id)
+    return redirect(url_for("intelligence.knowledge_index", message="岗位技能证据已提交审核"))
+
+
+@intelligence_bp.post("/knowledge/job-skill-links/<int:link_id>/review")
+@role_required("admin")
+def review_job_skill_link(link_id):
+    if repositories.get_job_skill_link(link_id) is None:
+        abort(404)
+    status = request.form.get("status", "")
+    try:
+        repositories.review_job_skill_link(link_id, status)
+    except ValueError:
+        abort(400)
+    _audit("review_job_skill_link", "job_skill_link", link_id, f"status={status}")
+    return redirect(url_for("intelligence.knowledge_index", message=f"岗位技能证据状态已更新为{status}"))
 
 
 @intelligence_bp.post("/knowledge/<kind>/<int:record_id>/status")

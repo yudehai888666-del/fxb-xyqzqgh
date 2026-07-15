@@ -1018,30 +1018,163 @@ def create_major_job_link(data, created_by=None):
     return cursor.lastrowid
 
 
+def _validate_job_skill_references(db, source_id, owner_user_id, reviewer_user_id):
+    references = (
+        (source_id, "intelligence_sources", "source"),
+        (owner_user_id, "users", "owner"),
+        (reviewer_user_id, "users", "reviewer"),
+    )
+    for record_id, table, label in references:
+        if record_id is not None and db.execute(
+            f"SELECT 1 FROM {table} WHERE id = ?", (record_id,)
+        ).fetchone() is None:
+            raise ValueError(f"invalid job skill {label}")
+
+
 def create_job_skill_link(data, created_by=None):
+    confidence_level = data.get("confidence_level", "").strip()
+    if confidence_level not in ("", "低", "中", "高"):
+        raise ValueError("invalid confidence level")
+    sample_size = int(data.get("sample_size") or 0)
+    if sample_size < 0:
+        raise ValueError("invalid sample size")
     db = get_db()
-    cursor = db.execute(
+    source_id = _optional_int(data.get("source_id"))
+    owner_user_id = _optional_int(data.get("owner_user_id"))
+    reviewer_user_id = _optional_int(data.get("reviewer_user_id"))
+    _validate_job_skill_references(
+        db, source_id, owner_user_id, reviewer_user_id
+    )
+    db.execute(
         """
         INSERT INTO job_skill_links (
             job_id, skill_id, importance_level, proficiency_level,
-            evidence_note, source_url, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            evidence_note, source_url, source_id, confidence_level,
+            sample_size, last_verified_at, next_check_at, owner_user_id,
+            reviewer_user_id, status, limitation_note, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '草稿', ?, ?)
         ON CONFLICT(job_id, skill_id) DO UPDATE SET
             importance_level = excluded.importance_level,
             proficiency_level = excluded.proficiency_level,
             evidence_note = excluded.evidence_note,
-            source_url = excluded.source_url
+            source_url = excluded.source_url,
+            source_id = excluded.source_id,
+            confidence_level = excluded.confidence_level,
+            sample_size = excluded.sample_size,
+            last_verified_at = excluded.last_verified_at,
+            next_check_at = excluded.next_check_at,
+            owner_user_id = excluded.owner_user_id,
+            reviewer_user_id = excluded.reviewer_user_id,
+            status = '草稿',
+            limitation_note = excluded.limitation_note,
+            created_by = excluded.created_by
         """,
         (
             int(data["job_id"]), int(data["skill_id"]),
             data.get("importance_level", "核心").strip() or "核心",
             data.get("proficiency_level", "掌握").strip() or "掌握",
             data.get("evidence_note", "").strip(), data.get("source_url", "").strip(),
-            created_by,
+            source_id, confidence_level, sample_size,
+            data.get("last_verified_at", "").strip(),
+            data.get("next_check_at", "").strip(),
+            owner_user_id, reviewer_user_id,
+            data.get("limitation_note", "").strip(), created_by,
         ),
     )
+    link_id = db.execute(
+        "SELECT id FROM job_skill_links WHERE job_id = ? AND skill_id = ?",
+        (int(data["job_id"]), int(data["skill_id"])),
+    ).fetchone()["id"]
     db.commit()
-    return cursor.lastrowid
+    return link_id
+
+
+def get_job_skill_link(link_id):
+    return get_db().execute(
+        """
+        SELECT js.*, j.name AS job_name, s.name AS skill_name,
+               source.name AS source_name,
+               source.url AS configured_source_url,
+               owner.display_name AS owner_name,
+               reviewer.display_name AS reviewer_name
+        FROM job_skill_links js
+        JOIN knowledge_jobs j ON j.id = js.job_id
+        JOIN knowledge_skills s ON s.id = js.skill_id
+        LEFT JOIN intelligence_sources source ON source.id = js.source_id
+        LEFT JOIN users owner ON owner.id = js.owner_user_id
+        LEFT JOIN users reviewer ON reviewer.id = js.reviewer_user_id
+        WHERE js.id = ?
+        """,
+        (link_id,),
+    ).fetchone()
+
+
+def list_job_skill_links():
+    return get_db().execute(
+        """
+        SELECT js.*, j.name AS job_name, s.name AS skill_name,
+               source.name AS source_name,
+               source.url AS configured_source_url,
+               owner.display_name AS owner_name,
+               reviewer.display_name AS reviewer_name
+        FROM job_skill_links js
+        JOIN knowledge_jobs j ON j.id = js.job_id
+        JOIN knowledge_skills s ON s.id = js.skill_id
+        LEFT JOIN intelligence_sources source ON source.id = js.source_id
+        LEFT JOIN users owner ON owner.id = js.owner_user_id
+        LEFT JOIN users reviewer ON reviewer.id = js.reviewer_user_id
+        ORDER BY j.name, s.name
+        """
+    ).fetchall()
+
+
+def _validate_job_skill_governance(link):
+    _validate_job_skill_references(
+        get_db(), link["source_id"], link["owner_user_id"], link["reviewer_user_id"]
+    )
+    required = (
+        link["evidence_note"],
+        link["source_id"] or link["source_url"],
+        link["confidence_level"],
+        link["last_verified_at"],
+        link["next_check_at"],
+        link["owner_user_id"],
+        link["reviewer_user_id"],
+        link["limitation_note"],
+    )
+    if not all(required):
+        raise ValueError(
+            "提交前请补齐证据、来源、置信度、责任人、复核日期和限制说明"
+        )
+
+
+def submit_job_skill_link(link_id):
+    link = get_job_skill_link(link_id)
+    if link is None:
+        raise ValueError("岗位技能关系不存在")
+    if link["status"] not in ("草稿", "已退回"):
+        raise ValueError("只有草稿或已退回的岗位技能关系可提交审核")
+    _validate_job_skill_governance(link)
+    db = get_db()
+    db.execute("UPDATE job_skill_links SET status = '待审核' WHERE id = ?", (link_id,))
+    db.commit()
+
+
+def review_job_skill_link(link_id, status):
+    if status not in ("已发布", "已退回", "已过期"):
+        raise ValueError("invalid relationship status")
+    link = get_job_skill_link(link_id)
+    if link is None:
+        raise ValueError("岗位技能关系不存在")
+    if status in ("已发布", "已退回") and link["status"] != "待审核":
+        raise ValueError("岗位技能关系必须先处于待审核状态")
+    if status == "已过期" and link["status"] != "已发布":
+        raise ValueError("只有已发布的岗位技能关系可标记为已过期")
+    if status == "已发布":
+        _validate_job_skill_governance(link)
+    db = get_db()
+    db.execute("UPDATE job_skill_links SET status = ? WHERE id = ?", (status, link_id))
+    db.commit()
 
 
 def list_knowledge_graph_links():
@@ -1554,6 +1687,8 @@ def list_job_skill_requirements(job_id):
         FROM job_skill_links js
         JOIN knowledge_skills s ON s.id = js.skill_id
         WHERE js.job_id = ? AND s.status = '已发布'
+          AND js.status = '已发布'
+          AND (js.next_check_at = '' OR js.next_check_at >= date('now'))
         ORDER BY CASE js.importance_level WHEN '核心' THEN 0 WHEN '重要' THEN 1 ELSE 2 END,
                  s.name
         """,

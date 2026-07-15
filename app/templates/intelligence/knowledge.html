@@ -29,6 +29,24 @@
     {% else %}<p class="empty">尚未建立关系。先录入专业、岗位和技能，再在下方建立连接。</p>{% endif %}
   </section>
 
+  <section class="panel">
+    <div class="panel-header"><div><h2>岗位—技能证据关系</h2><p class="muted">只有已发布且未过复核日期的关系会进入学生报告。当前内容为测试数据，不代表真实市场。</p></div></div>
+    {% if job_skill_links %}
+      <div class="table-wrap"><table><thead><tr><th>岗位 / 技能</th><th>证据与来源</th><th>治理信息</th><th>状态</th>{% if current_user and current_user['role'] in ('admin', 'teacher') %}<th>操作</th>{% endif %}</tr></thead><tbody>
+      {% for link in job_skill_links %}<tr>
+        <td>{{ link["job_name"] }}<br><strong>{{ link["skill_name"] }}</strong><br><span class="muted">{{ link["importance_level"] }} / {{ link["proficiency_level"] }}</span></td>
+        <td>{{ link["evidence_note"] or "待补证据" }}<br>{% if link["configured_source_url"] or link["source_url"] %}<a href="{{ link['configured_source_url'] or link['source_url'] }}" target="_blank" rel="noopener">{{ link["source_name"] or "查看来源" }}</a>{% else %}<span class="muted">待补来源</span>{% endif %}<br><span class="muted">样本量：{{ link["sample_size"] }}；置信度：{{ link["confidence_level"] or "待评估" }}</span></td>
+        <td>责任人：{{ link["owner_name"] or "待指定" }}<br>审核人：{{ link["reviewer_name"] or "待指定" }}<br><span class="muted">核查：{{ link["last_verified_at"] or "待核查" }} → {{ link["next_check_at"] or "待安排" }}</span><br><span class="muted">限制：{{ link["limitation_note"] or "待补充" }}</span></td>
+        <td><span class="status-chip">{{ link["status"] }}</span></td>
+        {% if current_user and current_user['role'] in ('admin', 'teacher') %}<td>
+          {% if link["status"] in ("草稿", "已退回") %}<form method="post" action="{{ url_for('intelligence.submit_job_skill_link', link_id=link['id']) }}" class="inline-form"><button class="button secondary" type="submit">提交审核</button></form>{% endif %}
+          {% if current_user['role'] == 'admin' and link["status"] == "待审核" %}<form method="post" action="{{ url_for('intelligence.review_job_skill_link', link_id=link['id']) }}" class="inline-form"><select name="status"><option>已发布</option><option>已退回</option></select><button class="button secondary" type="submit">审核</button></form>{% elif current_user['role'] == 'admin' and link["status"] == "已发布" %}<form method="post" action="{{ url_for('intelligence.review_job_skill_link', link_id=link['id']) }}" class="inline-form"><input type="hidden" name="status" value="已过期"><button class="button secondary" type="submit">标记过期</button></form>{% endif %}
+        </td>{% endif %}
+      </tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}<p class="empty">尚未建立岗位—技能证据关系。</p>{% endif %}
+  </section>
+
   {% if current_user and current_user["role"] in ("admin", "teacher") %}
   <section class="detail-grid knowledge-entry-grid">
     <article class="panel"><h2>录入专业</h2><form method="post" action="{{ url_for('intelligence.create_major') }}" class="stack-form">
@@ -78,8 +96,17 @@
       <label><span>重要程度</span><select name="importance_level"><option>核心</option><option>重要</option><option>加分项</option></select></label>
       <label><span>能力要求</span><select name="proficiency_level"><option>了解</option><option selected>掌握</option><option>熟练</option><option>精通</option></select></label>
       <label><span>依据说明</span><textarea name="evidence_note" rows="2"></textarea></label>
-      <label><span>依据链接</span><input name="source_url" type="url"></label>
-      <button class="button" type="submit">保存岗位—技能关系</button>
+      <label><span>已配置数据源</span><select name="source_id"><option value="">请选择</option>{% for source in sources %}<option value="{{ source['id'] }}">{{ source['name'] }}</option>{% endfor %}</select></label>
+      <label><span>备用来源链接</span><input name="source_url" type="url" placeholder="未选数据源时填写"></label>
+      <label><span>置信度</span><select name="confidence_level"><option value="">待评估</option><option>低</option><option>中</option><option>高</option></select></label>
+      <label><span>样本量</span><input name="sample_size" type="number" min="0" value="0"></label>
+      <label><span>最近核查日期</span><input name="last_verified_at" type="date"></label>
+      <label><span>下次复核日期</span><input name="next_check_at" type="date"></label>
+      <label><span>责任人</span><select name="owner_user_id"><option value="">请选择</option>{% for user in users %}<option value="{{ user['id'] }}">{{ user['display_name'] }}</option>{% endfor %}</select></label>
+      <label><span>审核人</span><select name="reviewer_user_id"><option value="">请选择</option>{% for user in users %}<option value="{{ user['id'] }}">{{ user['display_name'] }}</option>{% endfor %}</select></label>
+      <label><span>限制说明</span><textarea name="limitation_note" rows="2" placeholder="必填：测试样本的适用范围与不足"></textarea></label>
+      <p class="muted">保存后为草稿；编辑已发布关系会重置为草稿并需重新审核。</p>
+      <button class="button" type="submit">保存岗位—技能草稿</button>
     </form></article>
   </section>
   {% endif %}
