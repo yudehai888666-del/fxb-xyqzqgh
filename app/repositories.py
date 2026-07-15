@@ -1,5 +1,114 @@
+from datetime import datetime, timedelta
+import json
+from secrets import token_urlsafe
+
 from .db import get_db
 from .models import ParentContact, Student
+
+
+def create_user(data):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO users (username, display_name, password_hash, role)
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            data["username"].strip(),
+            data["display_name"].strip(),
+            data["password_hash"],
+            data["role"],
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def get_user(user_id):
+    return get_db().execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+
+
+def get_user_by_username(username):
+    return get_db().execute(
+        "SELECT * FROM users WHERE username = ?", (username.strip(),)
+    ).fetchone()
+
+
+def list_users():
+    return get_db().execute(
+        "SELECT * FROM users ORDER BY is_active DESC, display_name, id"
+    ).fetchall()
+
+
+def update_user_last_login(user_id):
+    db = get_db()
+    db.execute("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?", (user_id,))
+    db.commit()
+
+
+def set_user_active(user_id, is_active):
+    db = get_db()
+    db.execute("UPDATE users SET is_active = ? WHERE id = ?", (1 if is_active else 0, user_id))
+    db.commit()
+
+
+def assign_student_access(student_id, user_id, access_level="编辑"):
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO student_access (student_id, user_id, access_level)
+        VALUES (?, ?, ?)
+        ON CONFLICT(student_id, user_id) DO UPDATE SET access_level = excluded.access_level
+        """,
+        (student_id, user_id, access_level),
+    )
+    db.commit()
+
+
+def revoke_student_access(student_id, user_id):
+    db = get_db()
+    db.execute(
+        "DELETE FROM student_access WHERE student_id = ? AND user_id = ?",
+        (student_id, user_id),
+    )
+    db.commit()
+
+
+def list_student_access(student_id):
+    return get_db().execute(
+        """
+        SELECT sa.*, u.username, u.display_name, u.role, u.is_active
+        FROM student_access sa JOIN users u ON u.id = sa.user_id
+        WHERE sa.student_id = ? ORDER BY u.display_name
+        """,
+        (student_id,),
+    ).fetchall()
+
+
+def user_can_access_student(user, student_id, require_edit=False):
+    if user is None:
+        return False
+    if user["role"] == "admin":
+        return True
+    row = get_db().execute(
+        "SELECT access_level FROM student_access WHERE student_id = ? AND user_id = ?",
+        (student_id, user["id"]),
+    ).fetchone()
+    if row is None:
+        return False
+    return not require_edit or row["access_level"] == "编辑"
+
+
+def create_audit_log(user_id, action, target_type="", target_id=None, details="", ip_address=""):
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO audit_logs (user_id, action, target_type, target_id, details, ip_address)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (user_id, action, target_type, target_id, details, ip_address),
+    )
+    db.commit()
 
 
 def row_to_student(row):
@@ -60,10 +169,21 @@ def create_student(data):
     return cursor.lastrowid
 
 
-def list_students():
-    rows = get_db().execute(
-        "SELECT * FROM students ORDER BY updated_at DESC, id DESC"
-    ).fetchall()
+def list_students(user=None):
+    if user is None or user["role"] == "admin":
+        rows = get_db().execute(
+            "SELECT * FROM students ORDER BY updated_at DESC, id DESC"
+        ).fetchall()
+    else:
+        rows = get_db().execute(
+            """
+            SELECT s.* FROM students s
+            JOIN student_access sa ON sa.student_id = s.id
+            WHERE sa.user_id = ?
+            ORDER BY s.updated_at DESC, s.id DESC
+            """,
+            (user["id"],),
+        ).fetchall()
     return [row_to_student(row) for row in rows]
 
 
@@ -255,12 +375,16 @@ def get_parent_questionnaire(student_id):
 
 def create_planning_document(student_id, data):
     db = get_db()
+    version = db.execute(
+        "SELECT COALESCE(MAX(version), 0) + 1 FROM planning_documents WHERE student_id = ?",
+        (student_id,),
+    ).fetchone()[0]
     cursor = db.execute(
         """
         INSERT INTO planning_documents (
-            student_id, title, status, content_markdown, file_path
+            student_id, title, status, content_markdown, file_path, version, visibility
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         (
             student_id,
@@ -268,6 +392,8 @@ def create_planning_document(student_id, data):
             data.get("status", "草稿"),
             data["content_markdown"],
             data.get("file_path", ""),
+            data.get("version", version),
+            data.get("visibility", "老师内部"),
         ),
     )
     db.commit()
@@ -302,6 +428,39 @@ def update_planning_document_file_path(document_id, file_path):
         WHERE id = ?
         """,
         (file_path, document_id),
+    )
+    db.commit()
+
+
+def update_planning_document_visibility(document_id, visibility):
+    db = get_db()
+    db.execute(
+        """
+        UPDATE planning_documents
+        SET visibility = ?, updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
+        WHERE id = ?
+        """,
+        (visibility, document_id),
+    )
+    db.execute(
+        """
+        UPDATE student_files SET visibility = ?
+        WHERE source_type = 'planning_document' AND source_id = ?
+        """,
+        (visibility, document_id),
+    )
+    db.commit()
+
+
+def confirm_planning_document(document_id):
+    db = get_db()
+    db.execute(
+        """
+        UPDATE planning_documents
+        SET status = '已确认', updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
+        WHERE id = ? AND status = '草稿'
+        """,
+        (document_id,),
     )
     db.commit()
 
@@ -389,9 +548,10 @@ def create_material(student_id, data):
     cursor = db.execute(
         """
         INSERT INTO materials (
-            student_id, uploader_type, original_filename, stored_filename, category
+            student_id, uploader_type, original_filename, stored_filename, category,
+            visibility
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
             student_id,
@@ -399,10 +559,210 @@ def create_material(student_id, data):
             data["original_filename"],
             data["stored_filename"],
             data.get("category", "其他材料"),
+            data.get("visibility", "老师内部"),
         ),
     )
     db.commit()
     return cursor.lastrowid
+
+
+def archive_student_file(student_id, data):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO student_files (
+            student_id, source_type, source_id, category, original_filename,
+            storage_area, storage_key, mime_type, size_bytes, sha256, version,
+            visibility, is_current
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(source_type, source_id) DO UPDATE SET
+            storage_key = excluded.storage_key,
+            mime_type = excluded.mime_type,
+            size_bytes = excluded.size_bytes,
+            sha256 = excluded.sha256,
+            visibility = excluded.visibility
+        """,
+        (
+            student_id,
+            data["source_type"],
+            data["source_id"],
+            data["category"],
+            data["original_filename"],
+            data["storage_area"],
+            data["storage_key"],
+            data.get("mime_type", ""),
+            data.get("size_bytes", 0),
+            data.get("sha256", ""),
+            data.get("version", 1),
+            data.get("visibility", "老师内部"),
+            1 if data.get("is_current", True) else 0,
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def list_student_files(student_id, include_deleted=False):
+    deleted_filter = "" if include_deleted else "AND deleted_at IS NULL"
+    return get_db().execute(
+        f"""
+        SELECT * FROM student_files
+        WHERE student_id = ? {deleted_filter}
+        ORDER BY created_at DESC, id DESC
+        """,
+        (student_id,),
+    ).fetchall()
+
+
+def get_student_file(file_id):
+    return get_db().execute(
+        "SELECT * FROM student_files WHERE id = ?", (file_id,)
+    ).fetchone()
+
+
+def update_student_file_visibility(file_id, visibility):
+    db = get_db()
+    file_record = get_student_file(file_id)
+    if file_record is None:
+        return
+    db.execute("UPDATE student_files SET visibility = ? WHERE id = ?", (visibility, file_id))
+    if file_record["source_type"] == "material":
+        db.execute("UPDATE materials SET visibility = ? WHERE id = ?", (visibility, file_record["source_id"]))
+    elif file_record["source_type"] == "planning_document":
+        db.execute("UPDATE planning_documents SET visibility = ? WHERE id = ?", (visibility, file_record["source_id"]))
+    db.commit()
+
+
+def soft_delete_student_file(file_id):
+    db = get_db()
+    db.execute(
+        "UPDATE student_files SET deleted_at = CURRENT_TIMESTAMP, is_current = 0 WHERE id = ?",
+        (file_id,),
+    )
+    db.commit()
+
+
+def create_questionnaire_invitation(student_id, questionnaire_type, valid_days=7):
+    if questionnaire_type not in ("student", "parent"):
+        raise ValueError("invalid questionnaire type")
+    db = get_db()
+    db.execute(
+        """
+        UPDATE questionnaire_invitations SET status = '已作废'
+        WHERE student_id = ? AND questionnaire_type = ? AND status = '有效'
+        """,
+        (student_id, questionnaire_type),
+    )
+    token = token_urlsafe(32)
+    expires_at = (datetime.now() + timedelta(days=valid_days)).isoformat(timespec="seconds")
+    cursor = db.execute(
+        """
+        INSERT INTO questionnaire_invitations (
+            student_id, questionnaire_type, token, expires_at
+        ) VALUES (?, ?, ?, ?)
+        """,
+        (student_id, questionnaire_type, token, expires_at),
+    )
+    db.commit()
+    return get_questionnaire_invitation_by_id(cursor.lastrowid)
+
+
+def get_questionnaire_invitation_by_id(invitation_id):
+    return get_db().execute(
+        "SELECT * FROM questionnaire_invitations WHERE id = ?", (invitation_id,)
+    ).fetchone()
+
+
+def get_questionnaire_invitation(token):
+    return get_db().execute(
+        "SELECT * FROM questionnaire_invitations WHERE token = ?", (token,)
+    ).fetchone()
+
+
+def list_questionnaire_invitations(student_id):
+    return get_db().execute(
+        """
+        SELECT * FROM questionnaire_invitations
+        WHERE student_id = ? ORDER BY created_at DESC, id DESC
+        """,
+        (student_id,),
+    ).fetchall()
+
+
+def mark_invitation_opened(invitation_id):
+    db = get_db()
+    db.execute(
+        """
+        UPDATE questionnaire_invitations
+        SET opened_at = COALESCE(opened_at, CURRENT_TIMESTAMP)
+        WHERE id = ?
+        """,
+        (invitation_id,),
+    )
+    db.commit()
+
+
+def mark_invitation_submitted(invitation_id):
+    db = get_db()
+    db.execute(
+        """
+        UPDATE questionnaire_invitations
+        SET status = '已提交', submitted_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (invitation_id,),
+    )
+    db.commit()
+
+
+def revoke_questionnaire_invitation(invitation_id, student_id):
+    db = get_db()
+    db.execute(
+        """
+        UPDATE questionnaire_invitations SET status = '已作废'
+        WHERE id = ? AND student_id = ? AND status = '有效'
+        """,
+        (invitation_id, student_id),
+    )
+    db.commit()
+
+
+def create_questionnaire_submission(student_id, invitation_id, questionnaire_type, answers):
+    if questionnaire_type not in ("student", "parent"):
+        raise ValueError("invalid questionnaire type")
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO questionnaire_submissions (
+            student_id, invitation_id, questionnaire_type, answers_json
+        ) VALUES (?, ?, ?, ?)
+        """,
+        (
+            student_id,
+            invitation_id,
+            questionnaire_type,
+            json.dumps(dict(answers), ensure_ascii=False),
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def list_questionnaire_submissions(student_id, questionnaire_type):
+    return get_db().execute(
+        """
+        SELECT * FROM questionnaire_submissions
+        WHERE student_id = ? AND questionnaire_type = ?
+        ORDER BY submitted_at DESC, id DESC
+        """,
+        (student_id, questionnaire_type),
+    ).fetchall()
+
+
+def get_questionnaire_submission(submission_id):
+    return get_db().execute(
+        "SELECT * FROM questionnaire_submissions WHERE id = ?", (submission_id,)
+    ).fetchone()
 
 
 def list_materials(student_id):
@@ -541,3 +901,737 @@ def update_replanning_status(case_id, status):
         (status, case_id),
     )
     db.commit()
+
+
+KNOWLEDGE_STATUS_VALUES = ("草稿", "待审核", "已发布", "已退回")
+KNOWLEDGE_TABLES = {
+    "major": "knowledge_majors",
+    "job": "knowledge_jobs",
+    "skill": "knowledge_skills",
+}
+
+
+def create_knowledge_major(data, created_by=None):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO knowledge_majors (
+            name, discipline_category, degree_level, description,
+            source_url, source_name, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            data["name"].strip(), data.get("discipline_category", "").strip(),
+            data.get("degree_level", "本科").strip() or "本科",
+            data.get("description", "").strip(), data.get("source_url", "").strip(),
+            data.get("source_name", "").strip(), created_by,
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def create_knowledge_job(data, created_by=None):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO knowledge_jobs (
+            name, industry_name, job_family, description, development_direction,
+            source_url, source_name, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            data["name"].strip(), data.get("industry_name", "").strip(),
+            data.get("job_family", "").strip(), data.get("description", "").strip(),
+            data.get("development_direction", "").strip(),
+            data.get("source_url", "").strip(), data.get("source_name", "").strip(),
+            created_by,
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def create_knowledge_skill(data, created_by=None):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO knowledge_skills (
+            name, skill_type, description, source_url, source_name, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            data["name"].strip(), data.get("skill_type", "专业技能").strip() or "专业技能",
+            data.get("description", "").strip(), data.get("source_url", "").strip(),
+            data.get("source_name", "").strip(), created_by,
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def list_knowledge_majors():
+    return get_db().execute(
+        "SELECT * FROM knowledge_majors ORDER BY name"
+    ).fetchall()
+
+
+def list_knowledge_jobs():
+    return get_db().execute(
+        "SELECT * FROM knowledge_jobs ORDER BY industry_name, name"
+    ).fetchall()
+
+
+def list_knowledge_skills():
+    return get_db().execute(
+        "SELECT * FROM knowledge_skills ORDER BY skill_type, name"
+    ).fetchall()
+
+
+def update_knowledge_status(kind, record_id, status):
+    table = KNOWLEDGE_TABLES.get(kind)
+    if table is None or status not in KNOWLEDGE_STATUS_VALUES:
+        raise ValueError("invalid knowledge status update")
+    db = get_db()
+    db.execute(
+        f"UPDATE {table} SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (status, record_id),
+    )
+    db.commit()
+
+
+def create_major_job_link(data, created_by=None):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO major_job_links (
+            major_id, job_id, relevance_level, evidence_note, source_url, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(major_id, job_id) DO UPDATE SET
+            relevance_level = excluded.relevance_level,
+            evidence_note = excluded.evidence_note,
+            source_url = excluded.source_url
+        """,
+        (
+            int(data["major_id"]), int(data["job_id"]),
+            data.get("relevance_level", "相关").strip() or "相关",
+            data.get("evidence_note", "").strip(), data.get("source_url", "").strip(),
+            created_by,
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def create_job_skill_link(data, created_by=None):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO job_skill_links (
+            job_id, skill_id, importance_level, proficiency_level,
+            evidence_note, source_url, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(job_id, skill_id) DO UPDATE SET
+            importance_level = excluded.importance_level,
+            proficiency_level = excluded.proficiency_level,
+            evidence_note = excluded.evidence_note,
+            source_url = excluded.source_url
+        """,
+        (
+            int(data["job_id"]), int(data["skill_id"]),
+            data.get("importance_level", "核心").strip() or "核心",
+            data.get("proficiency_level", "掌握").strip() or "掌握",
+            data.get("evidence_note", "").strip(), data.get("source_url", "").strip(),
+            created_by,
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def list_knowledge_graph_links():
+    return get_db().execute(
+        """
+        SELECT mj.id, m.name AS major_name, m.status AS major_status,
+               j.id AS job_id, j.name AS job_name, j.industry_name,
+               j.development_direction, j.status AS job_status,
+               mj.relevance_level, mj.evidence_note,
+               GROUP_CONCAT(
+                   s.name || '（' || js.importance_level || ' / ' || js.proficiency_level || '）',
+                   '、'
+               ) AS skills
+        FROM major_job_links mj
+        JOIN knowledge_majors m ON m.id = mj.major_id
+        JOIN knowledge_jobs j ON j.id = mj.job_id
+        LEFT JOIN job_skill_links js ON js.job_id = j.id
+        LEFT JOIN knowledge_skills s ON s.id = js.skill_id
+        GROUP BY mj.id
+        ORDER BY m.name, j.name
+        """
+    ).fetchall()
+
+
+EXAM_FIELDS = (
+    "exam_name", "category", "region", "official_url", "source_name",
+    "registration_start", "registration_end", "exam_date", "summary",
+    "collector_user_id", "reviewer_user_id", "execution_owner_user_id",
+    "next_check_at",
+)
+
+
+def _optional_int(value):
+    return int(value) if value not in (None, "") else None
+
+
+def _exam_values(data):
+    values = {}
+    for field in EXAM_FIELDS:
+        if field.endswith("_user_id"):
+            values[field] = _optional_int(data.get(field))
+        else:
+            values[field] = str(data.get(field, "")).strip()
+    values["region"] = values["region"] or "全国"
+    return values
+
+
+def _save_exam_revision(db, exam_id, version, values, change_summary, created_by):
+    snapshot = dict(values)
+    snapshot["status"] = "草稿"
+    db.execute(
+        """
+        INSERT INTO exam_information_revisions (
+            exam_information_id, version, snapshot_json, change_summary, created_by
+        ) VALUES (?, ?, ?, ?, ?)
+        """,
+        (exam_id, version, json.dumps(snapshot, ensure_ascii=False), change_summary, created_by),
+    )
+
+
+def create_exam_information(data, created_by=None):
+    values = _exam_values(data)
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO exam_information (
+            exam_name, category, region, official_url, source_name,
+            registration_start, registration_end, exam_date, summary,
+            collector_user_id, reviewer_user_id, execution_owner_user_id,
+            next_check_at, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        tuple(values[field] for field in EXAM_FIELDS) + (created_by,),
+    )
+    exam_id = cursor.lastrowid
+    _save_exam_revision(
+        db, exam_id, 1, values, data.get("change_summary", "首次录入").strip() or "首次录入", created_by
+    )
+    db.commit()
+    return exam_id
+
+
+def get_exam_information(exam_id):
+    return get_db().execute(
+        """
+        SELECT e.*, collector.display_name AS collector_name,
+               reviewer.display_name AS reviewer_name,
+               owner.display_name AS execution_owner_name
+        FROM exam_information e
+        LEFT JOIN users collector ON collector.id = e.collector_user_id
+        LEFT JOIN users reviewer ON reviewer.id = e.reviewer_user_id
+        LEFT JOIN users owner ON owner.id = e.execution_owner_user_id
+        WHERE e.id = ?
+        """,
+        (exam_id,),
+    ).fetchone()
+
+
+def list_exam_information():
+    return get_db().execute(
+        """
+        SELECT e.*, collector.display_name AS collector_name,
+               reviewer.display_name AS reviewer_name,
+               owner.display_name AS execution_owner_name
+        FROM exam_information e
+        LEFT JOIN users collector ON collector.id = e.collector_user_id
+        LEFT JOIN users reviewer ON reviewer.id = e.reviewer_user_id
+        LEFT JOIN users owner ON owner.id = e.execution_owner_user_id
+        ORDER BY CASE e.status WHEN '待审核' THEN 0 WHEN '草稿' THEN 1 ELSE 2 END,
+                 e.next_check_at, e.updated_at DESC
+        """
+    ).fetchall()
+
+
+def update_exam_information(exam_id, data, created_by=None):
+    values = _exam_values(data)
+    db = get_db()
+    existing = db.execute(
+        "SELECT version FROM exam_information WHERE id = ?", (exam_id,)
+    ).fetchone()
+    if existing is None:
+        return False
+    version = existing["version"] + 1
+    assignments = ", ".join(f"{field} = ?" for field in EXAM_FIELDS)
+    db.execute(
+        f"""
+        UPDATE exam_information SET {assignments}, version = ?, status = '草稿',
+            updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        """,
+        tuple(values[field] for field in EXAM_FIELDS) + (version, exam_id),
+    )
+    _save_exam_revision(
+        db, exam_id, version, values,
+        data.get("change_summary", "信息更新").strip() or "信息更新", created_by,
+    )
+    db.commit()
+    return True
+
+
+def update_exam_status(exam_id, status):
+    if status not in ("草稿", "待审核", "已发布", "已退回", "已过期"):
+        raise ValueError("invalid exam status")
+    db = get_db()
+    db.execute(
+        "UPDATE exam_information SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (status, exam_id),
+    )
+    db.commit()
+
+
+def list_exam_revisions(exam_id):
+    return get_db().execute(
+        """
+        SELECT r.*, u.display_name AS creator_name
+        FROM exam_information_revisions r
+        LEFT JOIN users u ON u.id = r.created_by
+        WHERE r.exam_information_id = ?
+        ORDER BY r.version DESC
+        """,
+        (exam_id,),
+    ).fetchall()
+
+
+def create_industry(data, created_by=None):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO industries (
+            name, category, scope, description, owner_user_id,
+            reviewer_user_id, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            data["name"].strip(), data.get("category", "").strip(),
+            data.get("scope", "全国").strip() or "全国",
+            data.get("description", "").strip(),
+            _optional_int(data.get("owner_user_id")),
+            _optional_int(data.get("reviewer_user_id")), created_by,
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def list_industries():
+    return get_db().execute(
+        """
+        SELECT i.*, owner.display_name AS owner_name,
+               reviewer.display_name AS reviewer_name
+        FROM industries i
+        LEFT JOIN users owner ON owner.id = i.owner_user_id
+        LEFT JOIN users reviewer ON reviewer.id = i.reviewer_user_id
+        ORDER BY i.name
+        """
+    ).fetchall()
+
+
+def update_industry_status(industry_id, status):
+    if status not in KNOWLEDGE_STATUS_VALUES:
+        raise ValueError("invalid industry status")
+    db = get_db()
+    db.execute(
+        "UPDATE industries SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (status, industry_id),
+    )
+    db.commit()
+
+
+def create_intelligence_source(data, created_by=None):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO intelligence_sources (
+            name, url, source_kind, collection_mode, update_frequency,
+            owner_user_id, reviewer_user_id, compliance_note, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            data["name"].strip(), data["url"].strip(),
+            data.get("source_kind", "政府与公共机构").strip(),
+            data.get("collection_mode", "公开网页").strip(),
+            data.get("update_frequency", "每月").strip(),
+            _optional_int(data.get("owner_user_id")),
+            _optional_int(data.get("reviewer_user_id")),
+            data.get("compliance_note", "").strip(), created_by,
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def get_intelligence_source(source_id):
+    return get_db().execute(
+        """
+        SELECT s.*, owner.display_name AS owner_name,
+               reviewer.display_name AS reviewer_name
+        FROM intelligence_sources s
+        LEFT JOIN users owner ON owner.id = s.owner_user_id
+        LEFT JOIN users reviewer ON reviewer.id = s.reviewer_user_id
+        WHERE s.id = ?
+        """,
+        (source_id,),
+    ).fetchone()
+
+
+def list_intelligence_sources():
+    return get_db().execute(
+        """
+        SELECT s.*, owner.display_name AS owner_name,
+               reviewer.display_name AS reviewer_name,
+               (SELECT COUNT(*) FROM intelligence_source_snapshots ss
+                WHERE ss.source_id = s.id) AS snapshot_count
+        FROM intelligence_sources s
+        LEFT JOIN users owner ON owner.id = s.owner_user_id
+        LEFT JOIN users reviewer ON reviewer.id = s.reviewer_user_id
+        ORDER BY s.is_active DESC,
+                 CASE s.last_change_status WHEN '有变化' THEN 0 WHEN '采集失败' THEN 1 ELSE 2 END,
+                 s.name
+        """
+    ).fetchall()
+
+
+def record_intelligence_snapshot(source_id, data, created_by=None):
+    db = get_db()
+    source = db.execute(
+        "SELECT last_content_hash FROM intelligence_sources WHERE id = ?", (source_id,)
+    ).fetchone()
+    if source is None:
+        raise ValueError("source not found")
+    content_hash = data.get("content_hash", "")
+    error_message = data.get("error_message", "")
+    is_changed = bool(content_hash and source["last_content_hash"] and
+                      content_hash != source["last_content_hash"])
+    if error_message:
+        change_status = "采集失败"
+    elif not source["last_content_hash"]:
+        change_status = "首次采集"
+    elif is_changed:
+        change_status = "有变化"
+    else:
+        change_status = "无变化"
+    cursor = db.execute(
+        """
+        INSERT INTO intelligence_source_snapshots (
+            source_id, http_status, content_hash, page_title, content_excerpt,
+            content_bytes, is_changed, error_message, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            source_id, data.get("http_status"), content_hash,
+            data.get("page_title", ""), data.get("content_excerpt", ""),
+            data.get("content_bytes", 0), 1 if is_changed else 0,
+            error_message, created_by,
+        ),
+    )
+    if error_message:
+        db.execute(
+            """
+            UPDATE intelligence_sources SET last_fetch_at = CURRENT_TIMESTAMP,
+                last_change_status = ?, last_error = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (change_status, error_message, source_id),
+        )
+    else:
+        db.execute(
+            """
+            UPDATE intelligence_sources SET last_fetch_at = CURRENT_TIMESTAMP,
+                last_content_hash = ?, last_change_status = ?, last_error = '',
+                updated_at = CURRENT_TIMESTAMP WHERE id = ?
+            """,
+            (content_hash, change_status, source_id),
+        )
+    db.commit()
+    return cursor.lastrowid, change_status
+
+
+def list_intelligence_snapshots(source_id, limit=20):
+    return get_db().execute(
+        """
+        SELECT ss.*, u.display_name AS creator_name
+        FROM intelligence_source_snapshots ss
+        LEFT JOIN users u ON u.id = ss.created_by
+        WHERE ss.source_id = ? ORDER BY ss.fetched_at DESC, ss.id DESC LIMIT ?
+        """,
+        (source_id, int(limit)),
+    ).fetchall()
+
+
+def create_industry_trend(data, created_by=None):
+    db = get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO industry_trends (
+            industry_id, title, trend_type, region, direction_summary,
+            employment_impact, affected_jobs, affected_majors, evidence_summary,
+            source_id, source_url, published_at, next_check_at, owner_user_id,
+            reviewer_user_id, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            int(data["industry_id"]), data["title"].strip(),
+            data.get("trend_type", "产业方向").strip(),
+            data.get("region", "全国").strip() or "全国",
+            data.get("direction_summary", "").strip(),
+            data.get("employment_impact", "").strip(),
+            data.get("affected_jobs", "").strip(),
+            data.get("affected_majors", "").strip(),
+            data.get("evidence_summary", "").strip(),
+            _optional_int(data.get("source_id")), data.get("source_url", "").strip(),
+            data.get("published_at", "").strip(), data.get("next_check_at", "").strip(),
+            _optional_int(data.get("owner_user_id")),
+            _optional_int(data.get("reviewer_user_id")), created_by,
+        ),
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
+def list_industry_trends():
+    return get_db().execute(
+        """
+        SELECT t.*, i.name AS industry_name, s.name AS source_name,
+               s.url AS configured_source_url, owner.display_name AS owner_name,
+               reviewer.display_name AS reviewer_name
+        FROM industry_trends t
+        JOIN industries i ON i.id = t.industry_id
+        LEFT JOIN intelligence_sources s ON s.id = t.source_id
+        LEFT JOIN users owner ON owner.id = t.owner_user_id
+        LEFT JOIN users reviewer ON reviewer.id = t.reviewer_user_id
+        ORDER BY CASE t.status WHEN '待审核' THEN 0 WHEN '草稿' THEN 1 ELSE 2 END,
+                 t.updated_at DESC
+        """
+    ).fetchall()
+
+
+def get_industry_trend(trend_id):
+    return get_db().execute(
+        """
+        SELECT t.*, i.name AS industry_name, s.name AS source_name,
+               s.url AS configured_source_url, owner.display_name AS owner_name,
+               reviewer.display_name AS reviewer_name
+        FROM industry_trends t
+        JOIN industries i ON i.id = t.industry_id
+        LEFT JOIN intelligence_sources s ON s.id = t.source_id
+        LEFT JOIN users owner ON owner.id = t.owner_user_id
+        LEFT JOIN users reviewer ON reviewer.id = t.reviewer_user_id
+        WHERE t.id = ?
+        """,
+        (trend_id,),
+    ).fetchone()
+
+
+def update_industry_trend_status(trend_id, status):
+    if status not in ("草稿", "待审核", "已发布", "已退回", "已过期"):
+        raise ValueError("invalid trend status")
+    db = get_db()
+    db.execute(
+        "UPDATE industry_trends SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (status, trend_id),
+    )
+    db.commit()
+
+
+def list_published_jobs():
+    return get_db().execute(
+        "SELECT * FROM knowledge_jobs WHERE status = '已发布' ORDER BY industry_name, name"
+    ).fetchall()
+
+
+def list_published_skills():
+    return get_db().execute(
+        "SELECT * FROM knowledge_skills WHERE status = '已发布' ORDER BY skill_type, name"
+    ).fetchall()
+
+
+def upsert_student_job_target(student_id, data, created_by=None):
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO student_job_targets (
+            student_id, job_id, priority, target_note, created_by
+        ) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(student_id, job_id) DO UPDATE SET
+            priority = excluded.priority, target_note = excluded.target_note,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            student_id, int(data["job_id"]), int(data.get("priority", 1)),
+            data.get("target_note", "").strip(), created_by,
+        ),
+    )
+    db.commit()
+
+
+def list_student_job_targets(student_id):
+    return get_db().execute(
+        """
+        SELECT t.*, j.name AS job_name, j.industry_name, j.job_family,
+               j.development_direction, j.status AS job_status
+        FROM student_job_targets t
+        JOIN knowledge_jobs j ON j.id = t.job_id
+        WHERE t.student_id = ? ORDER BY t.priority, j.name
+        """,
+        (student_id,),
+    ).fetchall()
+
+
+def upsert_student_skill_assessment(student_id, data, assessed_by=None):
+    level = int(data.get("current_level", 0))
+    if level < 0 or level > 4:
+        raise ValueError("invalid skill level")
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO student_skill_assessments (
+            student_id, skill_id, current_level, evidence_note, assessed_by
+        ) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(student_id, skill_id) DO UPDATE SET
+            current_level = excluded.current_level,
+            evidence_note = excluded.evidence_note,
+            assessed_by = excluded.assessed_by,
+            assessed_at = CURRENT_TIMESTAMP
+        """,
+        (
+            student_id, int(data["skill_id"]), level,
+            data.get("evidence_note", "").strip(), assessed_by,
+        ),
+    )
+    db.commit()
+
+
+def list_student_skill_assessments(student_id):
+    return get_db().execute(
+        """
+        SELECT a.*, s.name AS skill_name, s.skill_type, s.status AS skill_status,
+               u.display_name AS assessor_name
+        FROM student_skill_assessments a
+        JOIN knowledge_skills s ON s.id = a.skill_id
+        LEFT JOIN users u ON u.id = a.assessed_by
+        WHERE a.student_id = ? ORDER BY s.skill_type, s.name
+        """,
+        (student_id,),
+    ).fetchall()
+
+
+def list_student_candidate_jobs(student_id, student_major):
+    return get_db().execute(
+        """
+        SELECT DISTINCT j.*,
+               t.priority,
+               CASE WHEN t.job_id IS NOT NULL THEN '目标岗位' ELSE '专业关联' END AS path_source
+        FROM knowledge_jobs j
+        LEFT JOIN student_job_targets t
+          ON t.job_id = j.id AND t.student_id = ?
+        LEFT JOIN major_job_links mj ON mj.job_id = j.id
+        LEFT JOIN knowledge_majors m ON m.id = mj.major_id AND m.status = '已发布'
+        WHERE j.status = '已发布'
+          AND (t.job_id IS NOT NULL OR m.name = ? OR ? LIKE '%' || m.name || '%')
+        ORDER BY COALESCE(t.priority, 9), j.name
+        """,
+        (student_id, student_major, student_major),
+    ).fetchall()
+
+
+def list_job_skill_requirements(job_id):
+    return get_db().execute(
+        """
+        SELECT js.*, s.name AS skill_name, s.skill_type
+        FROM job_skill_links js
+        JOIN knowledge_skills s ON s.id = js.skill_id
+        WHERE js.job_id = ? AND s.status = '已发布'
+        ORDER BY CASE js.importance_level WHEN '核心' THEN 0 WHEN '重要' THEN 1 ELSE 2 END,
+                 s.name
+        """,
+        (job_id,),
+    ).fetchall()
+
+
+def list_published_industry_trends():
+    return get_db().execute(
+        """
+        SELECT t.*, i.name AS industry_name, s.name AS source_name,
+               s.url AS configured_source_url
+        FROM industry_trends t
+        JOIN industries i ON i.id = t.industry_id
+        LEFT JOIN intelligence_sources s ON s.id = t.source_id
+        WHERE t.status = '已发布' AND i.status = '已发布'
+        ORDER BY t.published_at DESC, t.updated_at DESC
+        """
+    ).fetchall()
+
+
+def list_published_exams():
+    return get_db().execute(
+        """
+        SELECT * FROM exam_information
+        WHERE status = '已发布'
+        ORDER BY exam_date, exam_name
+        """
+    ).fetchall()
+
+
+def upsert_student_exam_plan(student_id, data, created_by=None):
+    priority = int(data.get("priority", 1))
+    if priority not in (1, 2, 3):
+        raise ValueError("invalid exam priority")
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO student_exam_plans (
+            student_id, exam_id, purpose, priority, preparation_status,
+            personal_deadline, next_action, owner_user_id, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(student_id, exam_id) DO UPDATE SET
+            purpose = excluded.purpose, priority = excluded.priority,
+            preparation_status = excluded.preparation_status,
+            personal_deadline = excluded.personal_deadline,
+            next_action = excluded.next_action,
+            owner_user_id = excluded.owner_user_id,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            student_id, int(data["exam_id"]), data.get("purpose", "").strip(),
+            priority, data.get("preparation_status", "未开始").strip() or "未开始",
+            data.get("personal_deadline", "").strip(),
+            data.get("next_action", "").strip(),
+            _optional_int(data.get("owner_user_id")), created_by,
+        ),
+    )
+    db.commit()
+
+
+def list_student_exam_plans(student_id):
+    return get_db().execute(
+        """
+        SELECT p.*, e.exam_name, e.category, e.region, e.official_url,
+               e.registration_start, e.registration_end, e.exam_date,
+               e.summary, e.status AS exam_status,
+               owner.display_name AS owner_name
+        FROM student_exam_plans p
+        JOIN exam_information e ON e.id = p.exam_id
+        LEFT JOIN users owner ON owner.id = p.owner_user_id
+        WHERE p.student_id = ?
+        ORDER BY p.priority, e.exam_date, e.exam_name
+        """,
+        (student_id,),
+    ).fetchall()

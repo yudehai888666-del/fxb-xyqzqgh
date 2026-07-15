@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}问卷邀请：{{ student.name }} - 学业规划工作台{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div><p class="eyebrow">第 1 步 · 信息采集</p><h1>向学生和家长收集信息</h1><p class="muted">为 {{ student.name }} 生成两个二维码，可同时填写；提交结果自动进入本学生档案。</p></div>
+  <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回流程总览</a>
+</section>
+
+<div class="invite-warning">二维码包含专属访问权限，请勿转发给无关人员。邀请默认 7 天有效，提交后自动失效。</div>
+{% if request.host.startswith("127.0.0.1") or request.host.startswith("localhost") %}
+<div class="invite-local-warning"><strong>局域网测试模式。</strong>二维码已自动使用 <code>http://{{ network_ip or "未检测到IP" }}:5050</code>。请确保手机和电脑连接同一 Wi-Fi，并保持本页服务运行。</div>
+{% endif %}
+
+<div class="invite-grid">
+{% for kind, title, icon in (("student", "学生问卷", "🎓"), ("parent", "家长问卷", "👪")) %}
+  {% set invitation = invitations.get(kind) %}
+  {% set state = invitation_state(invitation) if invitation else "未生成" %}
+  <article class="invite-card">
+    <div class="invite-card-head"><span class="invite-icon">{{ icon }}</span><div><h2>{{ title }}</h2><span class="invite-state state-{{ state }}">{{ state }}</span></div></div>
+    {% if invitation and state == "有效" %}
+      <img class="invite-qr" src="{{ url_for('invitations.qr_code', token=invitation['token']) }}" alt="{{ title }}二维码">
+      <label class="invite-link-label">填写链接</label>
+      <input class="invite-link" readonly value="{{ invitation_urls[kind] }}" onclick="this.select()">
+      <p class="invite-meta">有效至 {{ invitation["expires_at"][:16].replace("T", " ") }}{% if invitation["opened_at"] %} · 已打开{% endif %}</p>
+      <div class="invite-actions">
+        <form method="post" action="{{ url_for('invitations.create', student_id=student.id, questionnaire_type=kind) }}"><button class="button secondary" type="submit">重新生成</button></form>
+        <form method="post" action="{{ url_for('invitations.revoke', student_id=student.id, invitation_id=invitation['id']) }}"><button class="button danger-soft" type="submit">作废邀请</button></form>
+      </div>
+    {% else %}
+      <div class="invite-empty"><span>📱</span><p>{% if state == "已提交" %}问卷已提交，老师端已收到结果。{% if invitation["submitted_at"] %}<br>提交时间：{{ invitation["submitted_at"][:16] }}{% endif %}{% else %}生成专属二维码后，对方可用手机填写。{% endif %}</p></div>
+      {% if state == "已提交" %}<a class="button result-button" href="{{ url_for('invitations.results', student_id=student.id, questionnaire_type=kind) }}">查看填写结果</a>{% endif %}
+      <form method="post" action="{{ url_for('invitations.create', student_id=student.id, questionnaire_type=kind) }}"><button class="button" type="submit">{% if invitation %}生成新邀请{% else %}生成{{ title }}二维码{% endif %}</button></form>
+    {% endif %}
+  </article>
+{% endfor %}
+</div>
+<style>
+.invite-local-warning{margin:-8px 0 20px;padding:12px 15px;border:1px solid #bcd3f6;border-radius:10px;background:#f5f9ff;color:#31415a;font-size:13px}
+.result-button{width:100%;margin-bottom:9px}
+.invite-warning{margin-bottom:20px;padding:12px 15px;border:1px solid #f0cf82;border-radius:10px;background:#fff9e8;color:#73510d;font-size:13px}.invite-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.invite-card{padding:22px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 5px 20px rgba(31,41,51,.05)}.invite-card-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}.invite-card-head h2{margin:0 0 4px;font-size:19px}.invite-icon{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;background:#eef5ff;font-size:23px}.invite-state{font-size:12px;font-weight:700;color:var(--muted)}.state-有效{color:#087443}.state-已提交{color:#2563eb}.invite-qr{display:block;width:220px;height:220px;margin:8px auto 16px}.invite-link-label{display:block;margin-bottom:5px;color:var(--muted);font-size:12px}.invite-link{font-size:12px}.invite-meta{margin:8px 0 14px;color:var(--muted);font-size:12px}.invite-actions{display:flex;gap:9px}.invite-actions form{flex:1}.invite-actions .button{width:100%}.danger-soft{border-color:#f0b4b4!important;color:#a52727!important}.invite-empty{display:flex;align-items:center;gap:10px;min-height:220px;color:var(--muted)}.invite-empty>span{font-size:34px}.invite-empty p{font-size:14px}@media(max-width:760px){.invite-grid{grid-template-columns:1fr}.invite-qr{width:200px;height:200px}}
+</style>
+{% endblock %}

@@ -11,6 +11,10 @@ def app(tmp_path):
             "DATABASE": tmp_path / "test.sqlite3",
             "GENERATED_DIR": tmp_path / "generated",
             "UPLOAD_DIR": tmp_path / "uploads",
+            "BACKUP_DIR": tmp_path / "backups",
+            "PUBLIC_BASE_URL": "https://questionnaire.example.test",
+            "AUTH_DISABLED": True,
+            "SECRET_KEY": "test-secret-key",
         }
     )
     return app

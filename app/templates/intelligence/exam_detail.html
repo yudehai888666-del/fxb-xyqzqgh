@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ exam['exam_name'] }} - 考试动态{% endblock %}
+{% block content %}
+  <section class="page-heading"><div><p class="eyebrow">{{ exam['category'] or '考试动态' }}</p><h1>{{ exam['exam_name'] }}</h1><p class="muted">V{{ exam['version'] }} · <span class="status-chip">{{ exam['status'] }}</span></p></div><div class="action-list"><a class="button secondary" href="{{ url_for('intelligence.exams_index') }}">返回列表</a>{% if current_user and current_user['role'] in ('admin','teacher') %}<a class="button" href="{{ url_for('intelligence.exam_edit', exam_id=exam['id']) }}">更新信息</a>{% endif %}</div></section>
+  {% if request.args.get('error') %}<div class="form-error">{{ request.args.get('error') }}</div>{% endif %}
+  <section class="detail-grid">
+    <article class="panel"><h2>考试时间</h2><dl class="info-list"><div><dt>地区</dt><dd>{{ exam['region'] }}</dd></div><div><dt>报名时间</dt><dd>{{ exam['registration_start'] or '待定' }} 至 {{ exam['registration_end'] or '待定' }}</dd></div><div><dt>考试日期</dt><dd>{{ exam['exam_date'] or '待定' }}</dd></div><div><dt>下次核查</dt><dd>{{ exam['next_check_at'] or '未设置' }}</dd></div></dl></article>
+    <article class="panel"><h2>责任链</h2><dl class="info-list"><div><dt>信息采集人</dt><dd>{{ exam['collector_name'] or '未指定' }}</dd></div><div><dt>业务审核人</dt><dd>{{ exam['reviewer_name'] or '未指定' }}</dd></div><div><dt>学生执行负责人</dt><dd>{{ exam['execution_owner_name'] or '未指定' }}</dd></div><div><dt>官方来源</dt><dd>{% if exam['official_url'] %}<a href="{{ exam['official_url'] }}" target="_blank" rel="noopener">{{ exam['source_name'] or '打开官网' }}</a>{% else %}未填写{% endif %}</dd></div></dl></article>
+  </section>
+  <section class="panel"><h2>信息摘要与提醒</h2><p class="long-copy">{{ exam['summary'] or '尚未填写。' }}</p></section>
+  {% if current_user and current_user['role'] in ('admin','teacher') %}<section class="panel"><h2>提交与审核</h2><div class="action-list">
+    {% if exam['status'] in ('草稿','已退回') %}<form method="post" action="{{ url_for('intelligence.exam_submit', exam_id=exam['id']) }}"><button class="button" type="submit">提交审核</button></form>{% endif %}
+    {% if current_user['role'] == 'admin' %}<form method="post" action="{{ url_for('intelligence.exam_review', exam_id=exam['id']) }}" class="inline-form"><select name="status"><option>已发布</option><option>已退回</option><option>已过期</option></select><button class="button secondary" type="submit">确认状态</button></form>{% endif %}
+  </div><p class="field-note">任何编辑都会自动生成新版本并回到草稿状态，需重新审核后发布。</p></section>{% endif %}
+  <section class="panel"><h2>更新记录</h2><div class="table-wrap"><table><thead><tr><th>版本</th><th>变更说明</th><th>更新人</th><th>时间</th></tr></thead><tbody>{% for revision in revisions %}<tr><td>V{{ revision['version'] }}</td><td>{{ revision['change_summary'] }}</td><td>{{ revision['creator_name'] or '系统' }}</td><td>{{ revision['created_at'] }}</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}

@@ -8,21 +8,21 @@
   <!-- 顶部标题 -->
   <div class="q-header">
     <div class="q-header-left">
-      <div class="q-breadcrumb">
+      {% if not public_invite %}<div class="q-breadcrumb">
         <a href="{{ url_for('students.detail', student_id=student.id) }}">{{ student.name }}</a>
         <span>›</span>
         <span>学生问卷</span>
-      </div>
+      </div>{% endif %}
       <h1 class="q-title">
         <span class="q-title-icon">🎓</span>
         学生问卷
       </h1>
-      <p class="q-subtitle">记录当前适应状态、学业情况、兴趣优势与未来意向，用于后续制定个性化规划方案。</p>
+      <p class="q-subtitle">{{ student.name }}，请据实填写当前适应状态、学业情况、兴趣优势与未来意向。</p>
     </div>
-    <a class="q-btn-back" href="{{ url_for('students.detail', student_id=student.id) }}">
+    {% if not public_invite %}<a class="q-btn-back" href="{{ url_for('students.detail', student_id=student.id) }}">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
       返回档案
-    </a>
+    </a>{% endif %}
   </div>
 
   <!-- 进度提示条 -->
@@ -133,10 +133,10 @@
 
     <!-- 提交栏 -->
     <div class="q-actions">
-      <a class="q-btn-cancel" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>
+      {% if not public_invite %}<a class="q-btn-cancel" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>{% endif %}
       <button class="q-btn-submit" type="submit">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        保存学生问卷
+        {% if public_invite %}确认并提交给老师{% else %}保存学生问卷{% endif %}
       </button>
     </div>
 

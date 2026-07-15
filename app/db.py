@@ -37,3 +37,47 @@ def _run_lightweight_migrations(db):
         db.execute(
             "ALTER TABLE teacher_notes ADD COLUMN combined_notes TEXT NOT NULL DEFAULT ''"
         )
+
+    planning_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(planning_documents)")
+    }
+    if "version" not in planning_columns:
+        db.execute(
+            "ALTER TABLE planning_documents ADD COLUMN version INTEGER NOT NULL DEFAULT 1"
+        )
+    if "visibility" not in planning_columns:
+        db.execute(
+            "ALTER TABLE planning_documents ADD COLUMN visibility TEXT NOT NULL DEFAULT '老师内部'"
+        )
+
+    material_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(materials)")
+    }
+    if "visibility" not in material_columns:
+        db.execute(
+            "ALTER TABLE materials ADD COLUMN visibility TEXT NOT NULL DEFAULT '老师内部'"
+        )
+
+    db.execute(
+        """
+        INSERT OR IGNORE INTO student_files (
+            student_id, source_type, source_id, category, original_filename,
+            storage_area, storage_key, version, visibility
+        )
+        SELECT student_id, 'material', id, category, original_filename,
+               'uploads', stored_filename, 1, visibility
+        FROM materials
+        """
+    )
+    db.execute(
+        """
+        INSERT OR IGNORE INTO student_files (
+            student_id, source_type, source_id, category, original_filename,
+            storage_area, storage_key, version, visibility
+        )
+        SELECT student_id, 'planning_document', id, '规划文档', title || '.md',
+               'generated', file_path, version, visibility
+        FROM planning_documents
+        WHERE file_path != ''
+        """
+    )

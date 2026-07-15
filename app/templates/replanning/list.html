@@ -5,11 +5,12 @@
 {% block content %}
   <section class="page-heading">
     <div>
-      <p class="eyebrow">执行变更</p>
-      <h1>执行变更与重规划：{{ student.name }}</h1>
+      <p class="eyebrow">第 6 步 · 变更重规划</p>
+      <h1>{{ student.name }}的目标变更记录</h1>
+      <p class="muted">仅在原规划无法继续推进时使用，不是日常规划入口。</p>
     </div>
     <div class="action-list">
-      <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回档案</a>
+      <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回流程总览</a>
       <a class="button" href="{{ url_for('replanning.new', student_id=student.id) }}">新增变更记录</a>
     </div>
   </section>

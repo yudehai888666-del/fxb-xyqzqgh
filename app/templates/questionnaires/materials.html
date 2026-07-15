@@ -294,6 +294,18 @@
               <svg class="mat-select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
           </div>
+          <div class="mat-field">
+            <label class="mat-label" for="visibility">可见范围</label>
+            <div class="mat-select-wrap">
+              <select class="mat-select" id="visibility" name="visibility">
+                <option value="老师内部">老师内部</option>
+                <option value="学生可见">学生可见</option>
+                <option value="家长可见">家长可见</option>
+                <option value="学生与家长可见">学生与家长可见</option>
+              </select>
+              <svg class="mat-select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
         </div>
 
         <div class="mat-upload-zone" id="uploadZone">
@@ -329,7 +341,7 @@
           </div>
           <div class="mat-record-main" style="flex:1;">
             <span class="mat-record-name">{{ m["original_filename"] }}</span>
-            <span class="mat-record-type">{{ m["category"] }} · {{ m["uploader_type"] }}</span>
+            <span class="mat-record-type">{{ m["category"] }} · {{ m["uploader_type"] }} · {{ m["visibility"] }}</span>
           </div>
           <div class="mat-record-time">{{ m["uploaded_at"][:16] if m["uploaded_at"] else "—" }}</div>
         </div>

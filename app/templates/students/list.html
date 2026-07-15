@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}学生档案 - 学业规划工作台{% endblock %}
+{% block title %}学生工作台 - 学业规划工作台{% endblock %}
 
 {% block content %}
   <section class="page-heading">
     <div>
-      <p class="eyebrow">学生管理</p>
-      <h1>学生档案</h1>
+      <p class="eyebrow">以学生为中心</p>
+      <h1>学生规划工作台</h1>
+      <p class="muted">选择一名学生，继续其当前规划环节。</p>
     </div>
     <a class="button" href="{{ url_for('students.new') }}">新增学生</a>
   </section>
@@ -21,8 +22,9 @@
               <th>年级学期</th>
               <th>学校</th>
               <th>专业方向</th>
-              <th>城市</th>
-              <th>服务阶段</th>
+              <th>规划进度</th>
+              <th>当前环节</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -32,8 +34,9 @@
                 <td>{{ student.enrollment_year }} / {{ student.current_term }}</td>
                 <td>{{ student.school }}</td>
                 <td>{{ student.major }}</td>
-                <td>{{ student.city or "-" }}</td>
-                <td>{{ student.service_stage }}</td>
+                <td><div class="list-progress"><i style="width:{{ workflows[student.id].progress }}%"></i></div><span class="text-muted-sm">{{ workflows[student.id].progress }}%</span></td>
+                <td>第{{ workflows[student.id].next_stage.number }}步 · {{ workflows[student.id].next_stage.title }}</td>
+                <td><a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">继续规划</a></td>
               </tr>
             {% endfor %}
           </tbody>
@@ -43,4 +46,5 @@
       <p class="empty">还没有学生档案。</p>
     {% endif %}
   </section>
+  <style>.list-progress{width:110px;height:6px;overflow:hidden;border-radius:999px;background:#e8edf3}.list-progress i{display:block;height:100%;background:var(--accent)}</style>
 {% endblock %}
