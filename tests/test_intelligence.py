@@ -1,6 +1,7 @@
 from werkzeug.security import generate_password_hash
 
 from app import create_app, repositories
+from app.services import student_goals
 from app.services.intelligence_collection import CollectionError, validate_public_url
 from app.services.student_matching import build_student_intelligence_report
 
@@ -398,12 +399,14 @@ def test_admin_can_set_target_and_skill_then_view_visual_report(tmp_path):
     app = make_auth_app(tmp_path)
     client = app.test_client()
     with app.app_context():
-        create_user("admin", "admin")
-        student_id = repositories.create_student(
+        admin_id = create_user("admin", "admin")
+        student_id = student_goals.create_student_with_goal(
             {
                 "name": "图文报告学生", "gender": "女", "enrollment_year": 2026,
                 "current_term": "大一上", "school": "示例大学", "major": "工商管理",
-            }
+            },
+            {"primary_goal": "就业", "alternate_goal": "", "decision_reason": "准备就业"},
+            admin_id,
         )
         job_id = repositories.create_knowledge_job({"name": "产品经理", "industry_name": "互联网"})
         skill_id = repositories.create_knowledge_skill({"name": "用户研究"})
@@ -422,7 +425,7 @@ def test_admin_can_set_target_and_skill_then_view_visual_report(tmp_path):
         f"/students/{student_id}/intelligence-report/skills",
         data={"skill_id": skill_id, "current_level": 1, "evidence_note": "访谈作业"},
     ).status_code == 302
-    page = client.get(f"/students/{student_id}/intelligence-report")
+    page = client.get(f"/students/{student_id}/employment")
     text = page.get_data(as_text=True)
     assert page.status_code == 200
     assert "目标与职业情报" in text
@@ -436,9 +439,11 @@ def test_published_exam_is_assigned_inside_student_planning_workflow(tmp_path):
     client = app.test_client()
     with app.app_context():
         admin_id = create_user("admin", "admin")
-        student_id = repositories.create_student(
+        student_id = student_goals.create_student_with_goal(
             {"name": "考试流程学生", "gender": "女", "enrollment_year": 2026,
-             "current_term": "大一上", "school": "示例大学", "major": "英语"}
+             "current_term": "大一上", "school": "示例大学", "major": "英语"},
+            {"primary_goal": "就业", "alternate_goal": "", "decision_reason": "就业准备"},
+            admin_id,
         )
         exam_id = repositories.create_exam_information(
             {"exam_name": "大学英语四级", "official_url": "https://example.test/cet",
@@ -453,7 +458,7 @@ def test_published_exam_is_assigned_inside_student_planning_workflow(tmp_path):
               "next_action": "完成报名", "owner_user_id": admin_id},
     )
     assert response.status_code == 302
-    page = client.get(f"/students/{student_id}/intelligence-report").get_data(as_text=True)
+    page = client.get(f"/students/{student_id}/employment").get_data(as_text=True)
     assert "这名学生需要参加的考试" in page
     assert "大学英语四级" in page
     assert "完成报名" in page

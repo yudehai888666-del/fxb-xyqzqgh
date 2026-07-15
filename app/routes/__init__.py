@@ -9,6 +9,8 @@ from app.routes.auth import auth_bp
 from app.routes.files import files_bp
 from app.routes.intelligence import intelligence_bp
 from app.routes.matching import matching_bp
+from app.routes.goals import goals_bp
+from app.routes.employment import employment_bp
 
 
 def register_blueprints(app):
@@ -23,3 +25,5 @@ def register_blueprints(app):
     app.register_blueprint(files_bp)
     app.register_blueprint(intelligence_bp)
     app.register_blueprint(matching_bp)
+    app.register_blueprint(goals_bp)
+    app.register_blueprint(employment_bp)

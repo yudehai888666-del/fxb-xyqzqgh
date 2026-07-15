@@ -10,13 +10,13 @@
   <a class="workflow-overview {{ 'active' if request.endpoint == 'students.detail' else '' }}" href="{{ url_for('students.detail', student_id=workspace_student.id) }}"><span>总览</span></a>
   {% set stage_links = {
     1: url_for('invitations.manage', student_id=workspace_student.id),
-    2: url_for('matching.report', student_id=workspace_student.id),
+    2: student_workflow.stage2_url,
     3: url_for('teacher_notes.edit', student_id=workspace_student.id),
     4: url_for('planning.generate', student_id=workspace_student.id),
     5: url_for('students.detail', student_id=workspace_student.id, _anchor='execution'),
     6: url_for('replanning.list_view', student_id=workspace_student.id)
   } %}
-  {% set endpoint_stage = 1 if request.endpoint and (request.endpoint.startswith('invitations.') or request.endpoint.startswith('questionnaires.')) else 2 if request.endpoint and request.endpoint.startswith('matching.') else 3 if request.endpoint and request.endpoint.startswith('teacher_notes.') else 4 if request.endpoint and request.endpoint.startswith('planning.') else 6 if request.endpoint and request.endpoint.startswith('replanning.') else 0 %}
+  {% set endpoint_stage = 1 if request.endpoint and (request.endpoint.startswith('invitations.') or request.endpoint.startswith('questionnaires.')) else 2 if request.endpoint and (request.endpoint.startswith('goals.') or request.endpoint.startswith('employment.') or request.endpoint.startswith('matching.')) else 3 if request.endpoint and request.endpoint.startswith('teacher_notes.') else 4 if request.endpoint and request.endpoint.startswith('planning.') else 6 if request.endpoint and request.endpoint.startswith('replanning.') else 0 %}
   {% for stage in student_workflow.stages %}<a class="workflow-step {{ stage.status }} {{ 'active' if endpoint_stage == stage.number else '' }}" href="{{ stage_links[stage.number] }}"><b>{{ stage.number }}</b><span>{{ stage.title }}</span></a>{% endfor %}
   <a class="workflow-files {{ 'active' if request.endpoint and request.endpoint.startswith('files.') else '' }}" href="{{ url_for('files.center', student_id=workspace_student.id) }}">档案</a>
 </nav>

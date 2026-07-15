@@ -1,4 +1,5 @@
 from app import repositories
+from app.services import student_goals
 from app.services.completion import get_student_completion
 
 
@@ -11,6 +12,8 @@ def build_student_workflow(student_id):
     documents = repositories.list_planning_documents(student_id)
     confirmed_documents = [row for row in documents if row["status"] == "已确认"]
     replanning_cases = repositories.list_replanning_cases(student_id)
+    goal_profile = student_goals.get_goal_profile(student_id)
+    stage2_url = f"/students/{student_id}/stage-two"
 
     stage1 = "completed" if completion["ready_for_ai"] else "in_progress"
     intelligence_started = bool(targets or skills or exams)
@@ -19,6 +22,13 @@ def build_student_workflow(student_id):
         else "in_progress" if intelligence_started or stage1 == "completed"
         else "pending"
     )
+    if goal_profile is None:
+        stage2 = "in_progress" if stage1 == "completed" else "pending"
+        stage2_summary = "主目标待老师确认"
+    elif goal_profile["primary_goal"] == "就业":
+        stage2_summary = f"就业路径 · {len(targets)}个岗位目标 · {len(skills)}项技能"
+    else:
+        stage2_summary = "升学路径 · 专项模块待配置"
     stage3 = (
         "completed" if notes_done
         else "in_progress" if stage2 == "completed"
@@ -35,7 +45,7 @@ def build_student_workflow(student_id):
         {"number": 1, "title": "信息采集", "status": stage1,
          "summary": "学生、家长、材料与免责"},
         {"number": 2, "title": "目标与情报", "status": stage2,
-         "summary": f"{len(targets)}个岗位目标 · {len(skills)}项技能 · {len(exams)}项考试"},
+         "summary": stage2_summary},
         {"number": 3, "title": "诊断访谈", "status": stage3,
          "summary": "老师判断、风险与家庭共识"},
         {"number": 4, "title": "形成规划", "status": stage4,
@@ -53,4 +63,6 @@ def build_student_workflow(student_id):
         "progress": round(completed / 5 * 100),
         "completion": completion,
         "next_stage": stages[current - 1],
+        "stage2_url": stage2_url,
+        "goal_profile": goal_profile,
     }

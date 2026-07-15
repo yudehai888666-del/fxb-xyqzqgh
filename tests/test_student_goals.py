@@ -90,3 +90,114 @@ def test_goal_schema_initialization_is_idempotent(app):
             "SELECT name FROM sqlite_master WHERE type = 'table'"
         )}
         assert {"student_goal_profiles", "student_goal_changes"} <= tables
+
+
+def test_new_student_requires_primary_goal(client):
+    response = client.post("/students/new", data=STUDENT)
+    assert response.status_code == 400
+    assert "请选择升学或就业" in response.get_data(as_text=True)
+
+
+def test_stage_two_dispatches_by_goal(client, app):
+    with app.app_context():
+        employment_id = student_goals.create_student_with_goal(
+            STUDENT,
+            {"primary_goal": "就业", "alternate_goal": "升学", "decision_reason": "就业准备"},
+            None,
+        )
+        advancement_data = {**STUDENT, "name": "升学测试学生"}
+        advancement_id = student_goals.create_student_with_goal(
+            advancement_data,
+            {"primary_goal": "升学", "alternate_goal": "", "decision_reason": "准备考研"},
+            None,
+        )
+        undecided_id = repositories.create_student({**STUDENT, "name": "待确认学生"})
+    assert client.get(f"/students/{employment_id}/stage-two").headers["Location"].endswith(
+        f"/students/{employment_id}/employment"
+    )
+    assert client.get(f"/students/{advancement_id}/stage-two").headers["Location"].endswith(
+        f"/students/{advancement_id}/advancement"
+    )
+    assert client.get(f"/students/{undecided_id}/stage-two").headers["Location"].endswith(
+        f"/students/{undecided_id}/goals/confirm"
+    )
+
+
+def test_old_intelligence_url_uses_stage_two_dispatcher(client, app):
+    with app.app_context():
+        student_id = repositories.create_student(STUDENT)
+    response = client.get(f"/students/{student_id}/intelligence-report")
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(f"/students/{student_id}/stage-two")
+
+
+def make_auth_app(tmp_path):
+    return create_app(
+        {
+            "TESTING": True,
+            "AUTH_DISABLED": False,
+            "SECRET_KEY": "goal-test",
+            "DATABASE": tmp_path / "goal.sqlite3",
+            "UPLOAD_DIR": tmp_path / "uploads",
+            "GENERATED_DIR": tmp_path / "generated",
+            "BACKUP_DIR": tmp_path / "backups",
+        }
+    )
+
+
+def create_login_user(role, username):
+    return repositories.create_user(
+        {
+            "username": username,
+            "display_name": username,
+            "password_hash": generate_password_hash(
+                "password123", method="pbkdf2:sha256:600000"
+            ),
+            "role": role,
+        }
+    )
+
+
+def login(client, username):
+    return client.post(
+        "/login", data={"username": username, "password": "password123"}
+    )
+
+
+def test_collaborator_cannot_confirm_or_change_goal_even_with_edit_access(tmp_path):
+    auth_app = make_auth_app(tmp_path)
+    client = auth_app.test_client()
+    with auth_app.app_context():
+        collaborator_id = create_login_user("collaborator", "collab")
+        undecided_id = repositories.create_student(STUDENT)
+        employment_id = student_goals.create_student_with_goal(
+            {**STUDENT, "name": "已有目标学生"},
+            {
+                "primary_goal": "就业",
+                "alternate_goal": "",
+                "decision_reason": "初始就业",
+            },
+            actor_id=None,
+        )
+        repositories.assign_student_access(undecided_id, collaborator_id, "编辑")
+        repositories.assign_student_access(employment_id, collaborator_id, "编辑")
+    login(client, "collab")
+    confirm = client.post(
+        f"/students/{undecided_id}/goals/confirm",
+        data={
+            "primary_goal": "升学",
+            "alternate_goal": "",
+            "decision_reason": "准备考研",
+        },
+    )
+    change = client.post(
+        f"/students/{employment_id}/goals/change",
+        data={
+            "primary_goal": "升学",
+            "alternate_goal": "就业",
+            "decision_reason": "方向变化",
+            "replanning_id": "1",
+        },
+    )
+    assert confirm.status_code == 403
+    assert change.status_code == 403

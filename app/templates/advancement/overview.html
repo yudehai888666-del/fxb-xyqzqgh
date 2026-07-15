@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}升学路径：{{ student.name }} - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">第 2 步 · 升学路径</p>
+      <h1>{{ student.name }}的升学目标概览</h1>
+      <p class="muted">先汇总已确认方向和问卷意向，后续再接入院校、专业与考试专项分析。</p>
+    </div>
+    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回流程总览</a>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div><p class="eyebrow">目标确认</p><h2>当前规划方向</h2></div>
+    </div>
+    <dl class="info-list">
+      <div><dt>当前主目标</dt><dd><strong>{{ goal_profile['primary_goal'] }}</strong></dd></div>
+      <div><dt>备选方向</dt><dd>{{ goal_profile['alternate_goal'] or '无' }}</dd></div>
+      <div><dt>确认理由</dt><dd>{{ goal_profile['decision_reason'] }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="detail-grid">
+    <article class="panel">
+      <p class="eyebrow">学生意向摘要</p>
+      <h2>学生问卷</h2>
+      <p>{{ student_questionnaire['future_intentions'] if student_questionnaire and student_questionnaire['future_intentions'] else '尚未填写未来规划意向。' }}</p>
+    </article>
+    <article class="panel">
+      <p class="eyebrow">家庭意向摘要</p>
+      <h2>家长问卷</h2>
+      <p>{{ parent_questionnaire['target_priorities'] if parent_questionnaire and parent_questionnaire['target_priorities'] else '尚未填写家庭目标优先级。' }}</p>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><div><p class="eyebrow">专项建设中</p><h2>升学分析与行动方案</h2></div></div>
+    <p class="empty">升学专项模块尚未配置</p>
+    <p class="muted">当前已关联 {{ exam_plans|length }} 项考试计划；老师诊断{{ '已填写' if teacher_notes else '尚未填写' }}。</p>
+  </section>
+{% endblock %}

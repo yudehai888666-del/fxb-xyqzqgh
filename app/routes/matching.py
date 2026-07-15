@@ -1,8 +1,7 @@
-from flask import Blueprint, abort, g, redirect, render_template, request, url_for
+from flask import Blueprint, abort, g, redirect, request, url_for
 
 from app import repositories
 from app.auth import role_required
-from app.services.student_matching import build_student_intelligence_report
 
 
 matching_bp = Blueprint("matching", __name__)
@@ -17,18 +16,8 @@ def _get_student_or_404(student_id):
 
 @matching_bp.get("/students/<int:student_id>/intelligence-report")
 def report(student_id):
-    student = _get_student_or_404(student_id)
-    return render_template(
-        "matching/report.html",
-        report=build_student_intelligence_report(student),
-        available_jobs=repositories.list_published_jobs(),
-        available_skills=repositories.list_published_skills(),
-        available_exams=repositories.list_published_exams(),
-        exam_plans=repositories.list_student_exam_plans(student_id),
-        users=repositories.list_users() if g.current_user and g.current_user["role"] in ("admin", "teacher") else [],
-        message=request.args.get("message", ""),
-        error=request.args.get("error", ""),
-    )
+    _get_student_or_404(student_id)
+    return redirect(url_for("goals.stage_two", student_id=student_id))
 
 
 @matching_bp.post("/students/<int:student_id>/intelligence-report/targets")

@@ -55,6 +55,26 @@
         <span>负责老师</span>
         <input name="responsible_teacher" value="{{ form.get('responsible_teacher', '') }}">
       </label>
+      <label>
+        <span>当前主目标</span>
+        <select name="primary_goal" required>
+          <option value="">请选择</option>
+          <option value="升学" {{ 'selected' if form.get('primary_goal') == '升学' else '' }}>升学</option>
+          <option value="就业" {{ 'selected' if form.get('primary_goal') == '就业' else '' }}>就业</option>
+        </select>
+      </label>
+      <label>
+        <span>备选方向（可选）</span>
+        <select name="alternate_goal">
+          <option value="">无</option>
+          <option value="升学" {{ 'selected' if form.get('alternate_goal') == '升学' else '' }}>升学</option>
+          <option value="就业" {{ 'selected' if form.get('alternate_goal') == '就业' else '' }}>就业</option>
+        </select>
+      </label>
+      <label class="span-2">
+        <span>目标确认理由</span>
+        <textarea name="decision_reason" rows="3" required>{{ form.get('decision_reason', '') }}</textarea>
+      </label>
     </div>
     <div class="form-actions">
       <a class="button secondary" href="{{ url_for('students.list_view') }}">取消</a>

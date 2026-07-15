@@ -19,6 +19,9 @@ def test_create_student_redirects_to_detail(client):
             "city": "上海",
             "phone": "13800000000",
             "responsible_teacher": "张老师",
+            "primary_goal": "升学",
+            "alternate_goal": "就业",
+            "decision_reason": "优先准备研究生考试",
         },
         follow_redirects=True,
     )

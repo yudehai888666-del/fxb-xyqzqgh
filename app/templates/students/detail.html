@@ -13,7 +13,7 @@
 
   {% set stage_links = {
     1: url_for('invitations.manage', student_id=student.id),
-    2: url_for('matching.report', student_id=student.id),
+    2: student_workflow.stage2_url,
     3: url_for('teacher_notes.edit', student_id=student.id),
     4: url_for('planning.generate', student_id=student.id),
     5: '#execution',
@@ -36,7 +36,7 @@
   </section>
 
   <section class="detail-grid">
-    <article class="panel stage-panel"><div class="stage-panel-head compact"><div><span>第 2 步</span><h2>确定目标与外部依据</h2></div><a href="{{ url_for('matching.report', student_id=student.id) }}">进入目标分析 →</a></div><div class="mini-metrics"><div><strong>{{ job_targets|length }}</strong><span>目标岗位</span></div><div><strong>{{ skill_assessments|length }}</strong><span>技能评估</span></div><div><strong>{{ exam_plans|length }}</strong><span>学生考试</span></div></div><p>在学生名下选择岗位、考试和产业依据，而不是脱离学生浏览资料库。</p></article>
+    <article class="panel stage-panel"><div class="stage-panel-head compact"><div><span>第 2 步</span><h2>确定目标与外部依据</h2></div><a href="{{ student_workflow.stage2_url }}">进入目标分析 →</a></div><div class="mini-metrics"><div><strong>{{ job_targets|length }}</strong><span>目标岗位</span></div><div><strong>{{ skill_assessments|length }}</strong><span>技能评估</span></div><div><strong>{{ exam_plans|length }}</strong><span>学生考试</span></div></div><p>在学生名下选择岗位、考试和产业依据，而不是脱离学生浏览资料库。</p></article>
     <article class="panel stage-panel"><div class="stage-panel-head compact"><div><span>第 3 步</span><h2>形成老师诊断</h2></div><a href="{{ url_for('teacher_notes.edit', student_id=student.id) }}">{{ '查看诊断' if completion.teacher_notes == '已填写' else '填写诊断' }} →</a></div><p>结合问卷、材料、目标情报和访谈，记录目标可行性、学业风险、执行风险及家庭共识。</p><span class="stage-state {{ 'done' if completion.teacher_notes == '已填写' else '' }}">{{ completion.teacher_notes }}</span></article>
   </section>
 

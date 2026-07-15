@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}确认主目标：{{ student.name }} - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">第 2 步 · 目标与情报</p>
+      <h1>确认 {{ student.name }}的当前主目标</h1>
+      <p class="muted">由老师结合学生意向和家庭共识，确认当前优先推进的方向。</p>
+    </div>
+    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回流程总览</a>
+  </section>
+
+  <form class="form-panel" method="post">
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    <div class="form-grid">
+      <label>
+        <span>当前主目标</span>
+        <select name="primary_goal" required>
+          <option value="">请选择</option>
+          <option value="升学" {{ 'selected' if form.get('primary_goal') == '升学' else '' }}>升学</option>
+          <option value="就业" {{ 'selected' if form.get('primary_goal') == '就业' else '' }}>就业</option>
+        </select>
+      </label>
+      <label>
+        <span>备选方向（可选）</span>
+        <select name="alternate_goal">
+          <option value="">无</option>
+          <option value="升学" {{ 'selected' if form.get('alternate_goal') == '升学' else '' }}>升学</option>
+          <option value="就业" {{ 'selected' if form.get('alternate_goal') == '就业' else '' }}>就业</option>
+        </select>
+      </label>
+      <label class="span-2">
+        <span>目标确认理由</span>
+        <textarea name="decision_reason" rows="4" required>{{ form.get('decision_reason', '') }}</textarea>
+      </label>
+    </div>
+    <div class="form-actions">
+      <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">暂不确认</a>
+      <button class="button" type="submit">确认并进入第 2 步</button>
+    </div>
+  </form>
+{% endblock %}

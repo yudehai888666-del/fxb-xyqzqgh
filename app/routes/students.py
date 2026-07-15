@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, g, redirect, render_template, request, url_for
 
 from app import repositories
+from app.services import student_goals
 from app.services.completion import get_student_completion
 from app.services.student_workflow import build_student_workflow
 
@@ -32,7 +33,19 @@ def new():
                 400,
             )
 
-        student_id = repositories.create_student(request.form)
+        try:
+            student_id = student_goals.create_student_with_goal(
+                request.form,
+                request.form,
+                g.current_user["id"] if g.get("current_user") else None,
+            )
+        except student_goals.GoalValidationError as exc:
+            return (
+                render_template(
+                    "students/new.html", error=str(exc), form=request.form
+                ),
+                400,
+            )
         if g.get("current_user") is not None and g.current_user["role"] != "admin":
             repositories.assign_student_access(student_id, g.current_user["id"], "编辑")
         return redirect(url_for("students.detail", student_id=student_id))

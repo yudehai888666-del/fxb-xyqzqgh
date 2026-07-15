@@ -3,6 +3,7 @@
 {% block title %}执行变更与重规划：{{ student.name }} - 学业规划工作台{% endblock %}
 
 {% block content %}
+  {% if request.args.get('error') %}<div class="form-error" role="alert">{{ request.args.get('error') }}</div>{% endif %}
   <section class="page-heading">
     <div>
       <p class="eyebrow">第 6 步 · 变更重规划</p>
@@ -14,6 +15,29 @@
       <a class="button" href="{{ url_for('replanning.new', student_id=student.id) }}">新增变更记录</a>
     </div>
   </section>
+
+  {% for case in cases if case['status'] == '已确认' %}
+    <form class="form-panel" method="post" action="{{ url_for('goals.change', student_id=student.id) }}">
+      <div class="panel-header">
+        <div><p class="eyebrow">已确认重规划</p><h2>应用新的主目标</h2></div>
+      </div>
+      <input type="hidden" name="replanning_id" value="{{ case['id'] }}">
+      <div class="form-grid">
+        <label><span>当前主目标</span><select name="primary_goal" required>
+          <option value="">请选择</option>
+          <option value="升学" {{ 'selected' if case['new_primary_goal'] == '升学' else '' }}>升学</option>
+          <option value="就业" {{ 'selected' if case['new_primary_goal'] == '就业' else '' }}>就业</option>
+        </select></label>
+        <label><span>备选方向（可选）</span><select name="alternate_goal">
+          <option value="">无</option>
+          <option value="升学">升学</option>
+          <option value="就业">就业</option>
+        </select></label>
+        <label class="span-2"><span>目标变更理由</span><textarea name="decision_reason" rows="3" required>{{ case['trigger_event'] or '' }}</textarea></label>
+      </div>
+      <div class="form-actions"><button class="button" type="submit">确认应用目标变更</button></div>
+    </form>
+  {% endfor %}
 
   <section class="panel">
     {% if cases %}
