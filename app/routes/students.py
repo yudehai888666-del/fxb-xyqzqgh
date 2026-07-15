@@ -1,4 +1,13 @@
-from flask import Blueprint, abort, g, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    abort,
+    current_app,
+    g,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
 from app import repositories
 from app.services import student_goals
@@ -19,6 +28,10 @@ def list_view():
 
 @students_bp.route("/new", methods=("GET", "POST"))
 def new():
+    if not current_app.config.get("AUTH_DISABLED") and (
+        g.current_user is None or g.current_user["role"] not in ("admin", "teacher")
+    ):
+        abort(403)
     if request.method == "POST":
         form = request.form
         try:

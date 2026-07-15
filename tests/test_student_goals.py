@@ -201,3 +201,94 @@ def test_collaborator_cannot_confirm_or_change_goal_even_with_edit_access(tmp_pa
     )
     assert confirm.status_code == 403
     assert change.status_code == 403
+
+
+def test_collaborator_cannot_create_student_with_initial_goal(tmp_path):
+    auth_app = make_auth_app(tmp_path)
+    client = auth_app.test_client()
+    with auth_app.app_context():
+        create_login_user("collaborator", "collab-create")
+    login(client, "collab-create")
+
+    response = client.post(
+        "/students/new",
+        data={
+            **STUDENT,
+            "primary_goal": "就业",
+            "alternate_goal": "升学",
+            "decision_reason": "准备就业",
+        },
+    )
+
+    assert response.status_code == 403
+    with auth_app.app_context():
+        assert repositories.list_students() == []
+
+
+@pytest.mark.parametrize("role", ["admin", "teacher"])
+def test_admin_and_teacher_can_create_student_with_initial_goal(tmp_path, role):
+    auth_app = make_auth_app(tmp_path)
+    client = auth_app.test_client()
+    username = f"{role}-create"
+    with auth_app.app_context():
+        create_login_user(role, username)
+    login(client, username)
+
+    response = client.post(
+        "/students/new",
+        data={
+            **STUDENT,
+            "name": f"{role}创建的学生",
+            "primary_goal": "升学",
+            "alternate_goal": "就业",
+            "decision_reason": "准备考研",
+        },
+    )
+
+    assert response.status_code == 302
+    with auth_app.app_context():
+        students = repositories.list_students()
+        assert len(students) == 1
+        assert student_goals.get_goal_profile(students[0].id)["primary_goal"] == "升学"
+
+
+def test_goal_confirmation_page_includes_student_workflow_navigation(tmp_path):
+    auth_app = make_auth_app(tmp_path)
+    client = auth_app.test_client()
+    with auth_app.app_context():
+        teacher_id = create_login_user("teacher", "teacher-confirm-nav")
+        student_id = repositories.create_student(STUDENT)
+        repositories.assign_student_access(student_id, teacher_id, "查看")
+    login(client, "teacher-confirm-nav")
+
+    response = client.get(f"/students/{student_id}/goals/confirm")
+    text = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '<nav class="workflow-nav no-print"' in text
+    assert f'href="/students/{student_id}/stage-two"' in text
+
+
+def test_advancement_page_includes_student_workflow_navigation(tmp_path):
+    auth_app = make_auth_app(tmp_path)
+    client = auth_app.test_client()
+    with auth_app.app_context():
+        teacher_id = create_login_user("teacher", "teacher-advancement-nav")
+        student_id = student_goals.create_student_with_goal(
+            STUDENT,
+            {
+                "primary_goal": "升学",
+                "alternate_goal": "就业",
+                "decision_reason": "准备考研",
+            },
+            None,
+        )
+        repositories.assign_student_access(student_id, teacher_id, "查看")
+    login(client, "teacher-advancement-nav")
+
+    response = client.get(f"/students/{student_id}/advancement")
+    text = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '<nav class="workflow-nav no-print"' in text
+    assert f'href="/students/{student_id}/stage-two"' in text
