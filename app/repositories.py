@@ -1031,6 +1031,26 @@ def _validate_job_skill_references(db, source_id, owner_user_id, reviewer_user_i
             raise ValueError(f"invalid job skill {label}")
 
 
+def _parse_job_skill_date(value, label):
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError(f"{label} must use a valid YYYY-MM-DD date") from exc
+    if parsed.isoformat() != value:
+        raise ValueError(f"{label} must use a valid YYYY-MM-DD date")
+    return parsed
+
+
+def _validate_job_skill_dates(last_verified_at, next_check_at):
+    last_verified = _parse_job_skill_date(last_verified_at, "last_verified_at")
+    next_check = _parse_job_skill_date(next_check_at, "next_check_at")
+    if last_verified and next_check and next_check < last_verified:
+        raise ValueError("下次复核日期不得早于最近核查日期")
+
+
 def create_job_skill_link(data, created_by=None):
     confidence_level = data.get("confidence_level", "").strip()
     if confidence_level not in ("", "低", "中", "高"):
@@ -1042,6 +1062,9 @@ def create_job_skill_link(data, created_by=None):
     source_id = _optional_int(data.get("source_id"))
     owner_user_id = _optional_int(data.get("owner_user_id"))
     reviewer_user_id = _optional_int(data.get("reviewer_user_id"))
+    last_verified_at = data.get("last_verified_at", "").strip()
+    next_check_at = data.get("next_check_at", "").strip()
+    _validate_job_skill_dates(last_verified_at, next_check_at)
     _validate_job_skill_references(
         db, source_id, owner_user_id, reviewer_user_id
     )
@@ -1075,8 +1098,7 @@ def create_job_skill_link(data, created_by=None):
             data.get("proficiency_level", "掌握").strip() or "掌握",
             data.get("evidence_note", "").strip(), data.get("source_url", "").strip(),
             source_id, confidence_level, sample_size,
-            data.get("last_verified_at", "").strip(),
-            data.get("next_check_at", "").strip(),
+            last_verified_at, next_check_at,
             owner_user_id, reviewer_user_id,
             data.get("limitation_note", "").strip(), created_by,
         ),
@@ -1146,6 +1168,7 @@ def _validate_job_skill_governance(link):
         raise ValueError(
             "提交前请补齐证据、来源、置信度、责任人、复核日期和限制说明"
         )
+    _validate_job_skill_dates(link["last_verified_at"], link["next_check_at"])
 
 
 def submit_job_skill_link(link_id):
@@ -1686,9 +1709,40 @@ def list_job_skill_requirements(job_id):
         SELECT js.*, s.name AS skill_name, s.skill_type
         FROM job_skill_links js
         JOIN knowledge_skills s ON s.id = js.skill_id
+        LEFT JOIN intelligence_sources source ON source.id = js.source_id
+        JOIN users owner ON owner.id = js.owner_user_id
+        JOIN users reviewer ON reviewer.id = js.reviewer_user_id
         WHERE js.job_id = ? AND s.status = '已发布'
           AND js.status = '已发布'
-          AND (js.next_check_at = '' OR js.next_check_at >= date('now'))
+          AND TRIM(
+              js.evidence_note,
+              char(9, 10, 11, 12, 13, 28, 29, 30, 31, 32, 133, 160, 5760, 8192, 8193,
+                   8194, 8195, 8196, 8197, 8198, 8199, 8200, 8201, 8202,
+                   8232, 8233, 8239, 8287, 12288)
+          ) != ''
+          AND (
+              (js.source_id IS NOT NULL AND source.id IS NOT NULL)
+              OR (
+                  js.source_id IS NULL
+                  AND TRIM(
+                      js.source_url,
+                      char(9, 10, 11, 12, 13, 28, 29, 30, 31, 32, 133, 160, 5760, 8192,
+                           8193, 8194, 8195, 8196, 8197, 8198, 8199, 8200,
+                           8201, 8202, 8232, 8233, 8239, 8287, 12288)
+                  ) != ''
+              )
+          )
+          AND js.confidence_level IN ('低', '中', '高')
+          AND date(js.last_verified_at) = js.last_verified_at
+          AND date(js.next_check_at) = js.next_check_at
+          AND date(js.next_check_at) >= date(js.last_verified_at)
+          AND date(js.next_check_at) >= date('now')
+          AND TRIM(
+              js.limitation_note,
+              char(9, 10, 11, 12, 13, 28, 29, 30, 31, 32, 133, 160, 5760, 8192, 8193,
+                   8194, 8195, 8196, 8197, 8198, 8199, 8200, 8201, 8202,
+                   8232, 8233, 8239, 8287, 12288)
+          ) != ''
         ORDER BY CASE js.importance_level WHEN '核心' THEN 0 WHEN '重要' THEN 1 ELSE 2 END,
                  s.name
         """,

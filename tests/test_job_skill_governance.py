@@ -40,6 +40,15 @@ def find_link_id(job_id, skill_id):
     ).fetchone()["id"]
 
 
+def create_published_governed_link(actor_id, source_id, job_id, skill_id):
+    link_id = repositories.create_job_skill_link(
+        governed_link_data(actor_id, source_id, job_id, skill_id), actor_id
+    )
+    repositories.submit_job_skill_link(link_id)
+    repositories.review_job_skill_link(link_id, "已发布")
+    return link_id
+
+
 def test_job_skill_link_requires_governance_before_submission(app):
     with app.app_context():
         actor_id = create_user()
@@ -110,6 +119,7 @@ def test_expired_link_is_excluded_and_published_edit_returns_to_draft(app):
                 source_id,
                 job_id,
                 skill_id,
+                last_verified_at="2025-01-01",
                 next_check_at="2026-01-01",
             ),
             actor_id,
@@ -156,6 +166,146 @@ def test_job_skill_repository_rejects_invalid_governance_values(app):
                     actor_id, source_id, job_id, skill_id, sample_size=-1
                 )
             )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("last_verified_at", "2026-7-15"),
+        ("last_verified_at", "2026-02-30"),
+        ("next_check_at", "永不过期"),
+        ("next_check_at", "2026/10/15"),
+    ),
+)
+def test_job_skill_link_rejects_malformed_iso_dates_on_write(app, field, value):
+    with app.app_context():
+        suffix = abs(hash((field, value)))
+        actor_id = create_user(username=f"date-write-{suffix}")
+        source_id = create_source(actor_id)
+        job_id, skill_id = create_published_job_and_skill(
+            f"测试日期岗位-{suffix}", f"测试日期技能-{suffix}"
+        )
+        data = governed_link_data(actor_id, source_id, job_id, skill_id)
+        data[field] = value
+        with pytest.raises(ValueError, match="YYYY-MM-DD"):
+            repositories.create_job_skill_link(data, actor_id)
+
+
+def test_job_skill_link_rejects_reversed_verification_dates(app):
+    with app.app_context():
+        actor_id = create_user(username="date-order-admin")
+        source_id = create_source(actor_id)
+        job_id, skill_id = create_published_job_and_skill(
+            "测试日期顺序岗位", "测试日期顺序技能"
+        )
+        with pytest.raises(ValueError, match="不得早于"):
+            repositories.create_job_skill_link(
+                governed_link_data(
+                    actor_id,
+                    source_id,
+                    job_id,
+                    skill_id,
+                    last_verified_at="2026-10-16",
+                    next_check_at="2026-10-15",
+                ),
+                actor_id,
+            )
+
+
+def test_submit_and_publish_revalidate_dates_after_external_changes(app):
+    with app.app_context():
+        actor_id = create_user(username="date-lifecycle-admin")
+        source_id = create_source(actor_id)
+        job_id, skill_id = create_published_job_and_skill(
+            "测试日期复验岗位", "测试日期复验技能"
+        )
+        link_id = repositories.create_job_skill_link(
+            governed_link_data(actor_id, source_id, job_id, skill_id), actor_id
+        )
+        get_db().execute(
+            "UPDATE job_skill_links SET next_check_at = '永不过期' WHERE id = ?",
+            (link_id,),
+        )
+        get_db().commit()
+        with pytest.raises(ValueError, match="YYYY-MM-DD"):
+            repositories.submit_job_skill_link(link_id)
+
+        get_db().execute(
+            "UPDATE job_skill_links SET next_check_at = ? WHERE id = ?",
+            ((date.today() + timedelta(days=365)).isoformat(), link_id),
+        )
+        get_db().commit()
+        repositories.submit_job_skill_link(link_id)
+        get_db().execute(
+            "UPDATE job_skill_links SET last_verified_at = 'not-a-date' WHERE id = ?",
+            (link_id,),
+        )
+        get_db().commit()
+        with pytest.raises(ValueError, match="YYYY-MM-DD"):
+            repositories.review_job_skill_link(link_id, "已发布")
+
+
+@pytest.mark.parametrize(
+    "corruption_sql",
+    (
+        "UPDATE job_skill_links SET evidence_note = '' WHERE id = ?",
+        "UPDATE job_skill_links SET source_id = NULL, source_url = '' WHERE id = ?",
+        "UPDATE job_skill_links SET confidence_level = '' WHERE id = ?",
+        "UPDATE job_skill_links SET last_verified_at = 'not-a-date' WHERE id = ?",
+        "UPDATE job_skill_links SET next_check_at = '永不过期' WHERE id = ?",
+        "UPDATE job_skill_links SET owner_user_id = NULL WHERE id = ?",
+        "UPDATE job_skill_links SET reviewer_user_id = NULL WHERE id = ?",
+        "UPDATE job_skill_links SET limitation_note = '' WHERE id = ?",
+    ),
+)
+def test_final_requirement_query_revalidates_governance(app, corruption_sql):
+    with app.app_context():
+        suffix = abs(hash(corruption_sql))
+        actor_id = create_user(username=f"boundary-admin-{suffix}")
+        source_id = create_source(actor_id)
+        job_id, skill_id = create_published_job_and_skill(
+            f"测试边界岗位-{suffix}", f"测试边界技能-{suffix}"
+        )
+        link_id = create_published_governed_link(
+            actor_id, source_id, job_id, skill_id
+        )
+        assert len(repositories.list_job_skill_requirements(job_id)) == 1
+        get_db().execute(corruption_sql, (link_id,))
+        get_db().commit()
+        assert repositories.list_job_skill_requirements(job_id) == []
+
+
+@pytest.mark.parametrize(
+    ("field", "sql_value"),
+    (
+        ("evidence_note", "char(9)"),
+        ("evidence_note", "char(28)"),
+        ("evidence_note", "char(31)"),
+        ("source_url", "char(10)"),
+        ("source_url", "char(29)"),
+        ("limitation_note", "char(13)"),
+        ("limitation_note", "char(30)"),
+    ),
+)
+def test_final_requirement_query_rejects_whitespace_only_text(
+    app, field, sql_value
+):
+    with app.app_context():
+        actor_id = create_user(username=f"whitespace-{field}")
+        job_id, skill_id = create_published_job_and_skill(
+            f"测试空白岗位-{field}", f"测试空白技能-{field}"
+        )
+        data = governed_link_data(actor_id, None, job_id, skill_id)
+        data["source_url"] = "https://example.test/legacy-source"
+        link_id = repositories.create_job_skill_link(data, actor_id)
+        repositories.submit_job_skill_link(link_id)
+        repositories.review_job_skill_link(link_id, "已发布")
+        get_db().execute(
+            f"UPDATE job_skill_links SET {field} = {sql_value} WHERE id = ?",
+            (link_id,),
+        )
+        get_db().commit()
+        assert repositories.list_job_skill_requirements(job_id) == []
 
 
 @pytest.mark.parametrize(
