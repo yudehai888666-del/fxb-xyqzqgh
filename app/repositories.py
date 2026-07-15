@@ -141,7 +141,7 @@ def row_to_parent_contact(row):
     )
 
 
-def create_student(data):
+def create_student(data, commit=True):
     db = get_db()
     cursor = db.execute(
         """
@@ -152,20 +152,15 @@ def create_student(data):
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            data["name"],
-            data["gender"],
-            int(data["enrollment_year"]),
-            data["current_term"],
-            data["school"],
-            data.get("college", ""),
-            data["major"],
-            data.get("city", ""),
-            data.get("phone", ""),
+            data["name"], data["gender"], int(data["enrollment_year"]),
+            data["current_term"], data["school"], data.get("college", ""),
+            data["major"], data.get("city", ""), data.get("phone", ""),
             data.get("service_stage", "信息收集"),
             data.get("responsible_teacher", "本人"),
         ),
     )
-    db.commit()
+    if commit:
+        db.commit()
     return cursor.lastrowid
 
 

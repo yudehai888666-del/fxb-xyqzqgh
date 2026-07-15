@@ -214,6 +214,34 @@ CREATE TABLE IF NOT EXISTS replanning_cases (
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
 );
 
+CREATE TABLE IF NOT EXISTS student_goal_profiles (
+    student_id INTEGER PRIMARY KEY REFERENCES students(id) ON DELETE CASCADE,
+    primary_goal TEXT NOT NULL CHECK(primary_goal IN ('升学', '就业')),
+    alternate_goal TEXT NOT NULL DEFAULT '' CHECK(alternate_goal IN ('', '升学', '就业')),
+    decision_reason TEXT NOT NULL,
+    confirmed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    confirmed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK(alternate_goal = '' OR alternate_goal != primary_goal)
+);
+
+CREATE TABLE IF NOT EXISTS student_goal_changes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    change_type TEXT NOT NULL CHECK(change_type IN ('首次确认', '目标变更')),
+    from_primary_goal TEXT NOT NULL DEFAULT '',
+    to_primary_goal TEXT NOT NULL CHECK(to_primary_goal IN ('升学', '就业')),
+    from_alternate_goal TEXT NOT NULL DEFAULT '',
+    to_alternate_goal TEXT NOT NULL DEFAULT '',
+    change_reason TEXT NOT NULL,
+    replanning_id INTEGER REFERENCES replanning_cases(id) ON DELETE RESTRICT,
+    changed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_goal_changes_student
+ON student_goal_changes(student_id, changed_at DESC, id DESC);
+
 CREATE TABLE IF NOT EXISTS knowledge_majors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
