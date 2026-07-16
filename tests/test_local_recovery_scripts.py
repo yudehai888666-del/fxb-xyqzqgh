@@ -11,6 +11,8 @@ def test_recovery_scripts_exist_are_executable_and_parse():
     script_names = [
         "bootstrap_latest.sh",
         "check_local.sh",
+        "launch_local.command",
+        "launch_public.command",
         "start_local.sh",
         "start_public.sh",
     ]
@@ -27,6 +29,8 @@ def test_recovery_scripts_explain_their_purpose_in_chinese_help():
     expected_help = {
         "bootstrap_latest.sh": "从 Git 仓库恢复最新代码",
         "check_local.sh": "检查当前版本是否可以启动",
+        "launch_local.command": "双击启动学业规划本地服务",
+        "launch_public.command": "双击启动学业规划临时公网",
         "start_local.sh": "启动本地服务",
         "start_public.sh": "开启临时公网访问",
     }
@@ -48,6 +52,24 @@ def test_public_start_supports_cloudflared_and_localtunnel_fallback():
     assert "cloudflared tunnel --url" in script
     assert "npx localtunnel" in script
     assert "localtunnel" in readme
+
+
+def test_desktop_launchers_run_recovery_before_starting():
+    local_launcher = (ROOT / "scripts" / "launch_local.command").read_text(
+        encoding="utf-8"
+    )
+    public_launcher = (ROOT / "scripts" / "launch_public.command").read_text(
+        encoding="utf-8"
+    )
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "./scripts/bootstrap_latest.sh" in local_launcher
+    assert "./scripts/start_local.sh --background" in local_launcher
+    assert "open http://127.0.0.1:5050" in local_launcher
+    assert "./scripts/bootstrap_latest.sh" in public_launcher
+    assert "./scripts/start_public.sh" in public_launcher
+    assert "启动学业规划.command" in readme
+    assert "启动学业规划-公网.command" in readme
 
 
 def test_readme_documents_recovery_and_public_start_commands():

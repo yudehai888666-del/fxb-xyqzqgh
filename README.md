@@ -39,6 +39,21 @@ generated/plans/student-<学生ID>/plan-<规划ID>.md
 http://127.0.0.1:5050
 ```
 
+也可以直接用一行命令：
+
+```bash
+/Users/yu/Desktop/学业规划/scripts/launch_local.command
+```
+
+桌面上可以放两个双击入口：
+
+```text
+启动学业规划.command
+启动学业规划-公网.command
+```
+
+`启动学业规划.command` 会拉取 Git 最新版、后台启动本地服务，并自动打开浏览器。`启动学业规划-公网.command` 会拉取 Git 最新版，然后开启临时公网。
+
 如果需要先检查当前版本是否具备启动条件：
 
 ```bash
