@@ -405,6 +405,48 @@ CREATE TABLE IF NOT EXISTS intelligence_source_snapshots (
 CREATE INDEX IF NOT EXISTS idx_source_snapshots_source
 ON intelligence_source_snapshots(source_id, fetched_at DESC);
 
+CREATE TABLE IF NOT EXISTS employment_market_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id INTEGER NOT NULL REFERENCES knowledge_jobs(id) ON DELETE CASCADE,
+    region TEXT NOT NULL,
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
+    observed_posting_count INTEGER NOT NULL CHECK(observed_posting_count >= 0),
+    sample_size INTEGER NOT NULL CHECK(sample_size >= 0),
+    salary_min INTEGER,
+    salary_median INTEGER,
+    salary_max INTEGER,
+    currency TEXT NOT NULL DEFAULT 'CNY',
+    salary_period TEXT NOT NULL DEFAULT '月',
+    source_id INTEGER NOT NULL REFERENCES intelligence_sources(id) ON DELETE RESTRICT,
+    source_snapshot_id INTEGER REFERENCES intelligence_source_snapshots(id) ON DELETE SET NULL,
+    evidence_summary TEXT NOT NULL,
+    limitation_note TEXT NOT NULL,
+    data_classification TEXT NOT NULL DEFAULT '测试数据' CHECK(data_classification IN ('测试数据', '真实数据')),
+    owner_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    reviewer_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    status TEXT NOT NULL DEFAULT '草稿' CHECK(status IN ('草稿', '待审核', '已发布', '已退回', '已过期')),
+    next_check_at TEXT NOT NULL,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS employment_market_breakdowns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    snapshot_id INTEGER NOT NULL REFERENCES employment_market_snapshots(id) ON DELETE CASCADE,
+    dimension_type TEXT NOT NULL CHECK(dimension_type IN ('学历', '经验', '热门技能', '地区')),
+    label TEXT NOT NULL,
+    value REAL NOT NULL CHECK(value >= 0),
+    unit TEXT NOT NULL DEFAULT '%',
+    sample_size INTEGER NOT NULL DEFAULT 0 CHECK(sample_size >= 0),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(snapshot_id, dimension_type, label)
+);
+
+CREATE INDEX IF NOT EXISTS idx_market_snapshot_job_status
+ON employment_market_snapshots(job_id, status, period_end DESC);
+
 CREATE TABLE IF NOT EXISTS industry_trends (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     industry_id INTEGER NOT NULL REFERENCES industries(id) ON DELETE CASCADE,

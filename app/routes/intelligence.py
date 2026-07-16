@@ -2,7 +2,7 @@ import sqlite3
 
 from flask import Blueprint, abort, g, redirect, render_template, request, url_for
 
-from app import repositories
+from app import employment_repository, repositories
 from app.auth import role_required
 from app.services.intelligence_collection import (
     CollectionError,
@@ -22,6 +22,32 @@ def _audit(action, target_type, target_id=None, details=""):
     repositories.create_audit_log(
         _actor_id(), action, target_type, target_id, details, request.remote_addr or ""
     )
+
+
+def _market_breakdowns(form):
+    columns = [
+        form.getlist("breakdown_type"), form.getlist("breakdown_label"),
+        form.getlist("breakdown_value"), form.getlist("breakdown_unit"),
+        form.getlist("breakdown_sample_size"),
+    ]
+    if len({len(column) for column in columns}) != 1:
+        raise ValueError("市场分布行不完整")
+    rows = []
+    for index, values in enumerate(zip(*columns)):
+        dimension, label, value, unit, sample_size = (item.strip() for item in values)
+        if not any((dimension, label, value, unit, sample_size)):
+            continue
+        if not all((dimension, label, value)):
+            raise ValueError("市场分布行不完整")
+        rows.append({
+            "dimension_type": dimension,
+            "label": label,
+            "value": float(value),
+            "unit": unit or "%",
+            "sample_size": int(sample_size or 0),
+            "sort_order": index,
+        })
+    return rows
 
 
 @intelligence_bp.get("/knowledge")
@@ -277,6 +303,108 @@ def create_source():
         return redirect(url_for("intelligence.industries_index", error="该数据源链接已经存在"))
     _audit("create_intelligence_source", "intelligence_source", source_id)
     return redirect(url_for("intelligence.source_detail", source_id=source_id))
+
+
+@intelligence_bp.route("/employment-market", methods=("GET", "POST"))
+def market_snapshots():
+    if request.method == "POST":
+        if not g.current_user or g.current_user["role"] not in ("admin", "teacher"):
+            abort(403)
+        try:
+            snapshot_id = employment_repository.create_market_snapshot(
+                request.form, _market_breakdowns(request.form), _actor_id()
+            )
+        except (ValueError, sqlite3.IntegrityError) as exc:
+            return render_template(
+                "intelligence/market_snapshot_form.html",
+                snapshot=None,
+                breakdowns=[],
+                jobs=repositories.list_knowledge_jobs(),
+                sources=repositories.list_intelligence_sources(),
+                users=repositories.list_users(),
+                error=str(exc),
+            )
+        _audit("create_market_snapshot", "employment_market_snapshot", snapshot_id)
+        return redirect(url_for("intelligence.market_snapshots", message="就业市场快照已保存为草稿"))
+    if request.args.get("new"):
+        if not g.current_user or g.current_user["role"] not in ("admin", "teacher"):
+            abort(403)
+        return render_template(
+            "intelligence/market_snapshot_form.html",
+            snapshot=None,
+            breakdowns=[],
+            jobs=repositories.list_knowledge_jobs(),
+            sources=repositories.list_intelligence_sources(),
+            users=repositories.list_users(),
+            error="",
+        )
+    return render_template(
+        "intelligence/market_snapshots.html",
+        snapshots=employment_repository.list_market_snapshots(),
+        message=request.args.get("message", ""),
+        error=request.args.get("error", ""),
+    )
+
+
+@intelligence_bp.route("/employment-market/<int:snapshot_id>/edit", methods=("GET", "POST"))
+@role_required("admin", "teacher")
+def market_snapshot_edit(snapshot_id):
+    snapshot = employment_repository.get_market_snapshot(snapshot_id)
+    if snapshot is None:
+        abort(404)
+    if request.method == "POST":
+        try:
+            employment_repository.update_market_snapshot(
+                snapshot_id, request.form, _market_breakdowns(request.form), _actor_id()
+            )
+        except (ValueError, sqlite3.IntegrityError) as exc:
+            return render_template(
+                "intelligence/market_snapshot_form.html",
+                snapshot=snapshot,
+                breakdowns=employment_repository.list_market_breakdowns(snapshot_id),
+                jobs=repositories.list_knowledge_jobs(),
+                sources=repositories.list_intelligence_sources(),
+                users=repositories.list_users(),
+                error=str(exc),
+            )
+        _audit("update_market_snapshot", "employment_market_snapshot", snapshot_id)
+        return redirect(url_for("intelligence.market_snapshots", message="就业市场快照已更新"))
+    return render_template(
+        "intelligence/market_snapshot_form.html",
+        snapshot=snapshot,
+        breakdowns=employment_repository.list_market_breakdowns(snapshot_id),
+        jobs=repositories.list_knowledge_jobs(),
+        sources=repositories.list_intelligence_sources(),
+        users=repositories.list_users(),
+        error="",
+    )
+
+
+@intelligence_bp.post("/employment-market/<int:snapshot_id>/submit")
+@role_required("admin", "teacher")
+def submit_market_snapshot(snapshot_id):
+    if employment_repository.get_market_snapshot(snapshot_id) is None:
+        abort(404)
+    try:
+        employment_repository.submit_market_snapshot(snapshot_id)
+    except ValueError as exc:
+        return redirect(url_for("intelligence.market_snapshots", error=str(exc)))
+    _audit("submit_market_snapshot", "employment_market_snapshot", snapshot_id)
+    return redirect(url_for("intelligence.market_snapshots", message="就业市场快照已提交审核"))
+
+
+@intelligence_bp.post("/employment-market/<int:snapshot_id>/review")
+@role_required("admin")
+def review_market_snapshot(snapshot_id):
+    if employment_repository.get_market_snapshot(snapshot_id) is None:
+        abort(404)
+    status = request.form.get("status", "")
+    try:
+        employment_repository.review_market_snapshot(snapshot_id, status)
+    except ValueError as exc:
+        return redirect(url_for("intelligence.market_snapshots", error=str(exc)))
+    _audit("review_market_snapshot", "employment_market_snapshot", snapshot_id, f"status={status}")
+    return redirect(url_for("intelligence.market_snapshots", message=f"就业市场快照状态已更新为{status}"))
 
 
 @intelligence_bp.get("/intelligence-sources/<int:source_id>")

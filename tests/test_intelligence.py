@@ -292,6 +292,79 @@ def test_industry_trend_requires_evidence_source_reviewer_and_check_date(tmp_pat
         assert repositories.get_industry_trend(complete_id)["status"] == "已发布"
 
 
+def test_market_snapshot_routes_allow_teacher_submit_and_admin_publish(tmp_path):
+    from app import employment_repository
+
+    app = make_auth_app(tmp_path)
+    teacher_client = app.test_client()
+    admin_client = app.test_client()
+    with app.app_context():
+        teacher_id = create_user("teacher", "teacher")
+        admin_id = create_user("admin", "admin")
+        source_id = repositories.create_intelligence_source(
+            {"name": "测试就业来源", "url": "https://example.test/market"},
+            admin_id,
+        )
+        job_id = repositories.create_knowledge_job({"name": "就业测试岗位"})
+        repositories.update_knowledge_status("job", job_id, "已发布")
+
+    login(teacher_client, "teacher")
+    response = teacher_client.post(
+        "/employment-market",
+        data={
+            "job_id": job_id,
+            "region": "上海",
+            "period_start": "2026-06-01",
+            "period_end": "2026-06-30",
+            "observed_posting_count": 150,
+            "sample_size": 120,
+            "salary_min": 8000,
+            "salary_median": 12000,
+            "salary_max": 18000,
+            "currency": "CNY",
+            "salary_period": "月",
+            "source_id": source_id,
+            "evidence_summary": "功能测试招聘市场摘要",
+            "limitation_note": "合成测试样本，不代表真实招聘市场",
+            "owner_user_id": teacher_id,
+            "reviewer_user_id": admin_id,
+            "next_check_at": "2026-10-15",
+            "data_classification": "测试数据",
+            "breakdown_type": ["学历"],
+            "breakdown_label": ["本科"],
+            "breakdown_value": ["72"],
+            "breakdown_unit": ["%"],
+            "breakdown_sample_size": ["120"],
+        },
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        snapshot_id = employment_repository.list_market_snapshots()[0]["id"]
+
+    assert teacher_client.post(f"/employment-market/{snapshot_id}/submit").status_code == 302
+    assert teacher_client.post(
+        f"/employment-market/{snapshot_id}/review", data={"status": "已发布"}
+    ).status_code == 403
+
+    login(admin_client, "admin")
+    assert admin_client.post(
+        f"/employment-market/{snapshot_id}/review", data={"status": "已发布"}
+    ).status_code == 302
+    with app.app_context():
+        assert employment_repository.get_market_snapshot(snapshot_id)["status"] == "已发布"
+
+
+def test_collaborator_can_view_market_snapshots_but_not_create(tmp_path):
+    app = make_auth_app(tmp_path)
+    client = app.test_client()
+    with app.app_context():
+        create_user("collaborator", "collab")
+
+    login(client, "collab")
+    assert client.get("/employment-market").status_code == 200
+    assert client.post("/employment-market", data={}).status_code == 403
+
+
 def test_only_admin_configures_sources_but_teacher_can_run_collection(tmp_path, monkeypatch):
     app = make_auth_app(tmp_path)
     teacher_client = app.test_client()

@@ -12,7 +12,7 @@
       <nav class="nav" aria-label="主导航">
         <a href="{{ url_for('dashboard.dashboard') }}">首页</a>
         <a href="{{ url_for('students.list_view') }}">学生工作台</a>
-        {% if current_user %}<details class="nav-tools"><summary>后台资料库</summary><div class="nav-tools-menu"><a href="{{ url_for('intelligence.knowledge_index') }}">专业·岗位·技能</a><a href="{{ url_for('intelligence.industries_index') }}">产业与就业数据</a><a href="{{ url_for('intelligence.exams_index') }}">考试信息源</a></div></details>{% endif %}
+        {% if current_user %}<details class="nav-tools"><summary>后台资料库</summary><div class="nav-tools-menu"><a href="{{ url_for('intelligence.knowledge_index') }}">专业·岗位·技能</a><a href="{{ url_for('intelligence.industries_index') }}">产业与就业数据</a><a href="{{ url_for('intelligence.market_snapshots') }}">就业市场快照</a><a href="{{ url_for('intelligence.exams_index') }}">考试信息源</a></div></details>{% endif %}
         {% if current_user and current_user["role"] == "admin" %}<a href="{{ url_for('auth.users') }}">账号管理</a>{% endif %}
         {% if current_user %}
           <span class="nav-user">{{ current_user["display_name"] }}</span>

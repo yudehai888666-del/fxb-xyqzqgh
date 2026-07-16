@@ -34,3 +34,10 @@ def create_published_job_and_skill(
     repositories.update_knowledge_status("job", job_id, "已发布")
     repositories.update_knowledge_status("skill", skill_id, "已发布")
     return job_id, skill_id
+
+
+def create_market_prerequisites():
+    actor_id = create_user(username="market-admin")
+    source_id = create_source(actor_id)
+    job_id, _ = create_published_job_and_skill("测试就业岗位", "测试市场技能")
+    return actor_id, source_id, job_id

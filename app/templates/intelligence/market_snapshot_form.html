@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑' if snapshot else '录入' }}就业市场快照 - 学业规划工作台{% endblock %}
+{% block content %}
+  <section class="page-heading"><div><p class="eyebrow">测试数据治理</p><h1>{{ '编辑就业市场快照' if snapshot else '录入就业市场快照' }}</h1><p class="muted">本阶段只能录入测试数据，真实招聘数据入口暂不开放。</p></div><a class="button secondary" href="{{ url_for('intelligence.market_snapshots') }}">返回列表</a></section>
+  <section class="form-panel">{% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+  <form method="post" class="form-grid">
+    <input type="hidden" name="data_classification" value="测试数据">
+    <label><span>岗位 *</span><select name="job_id" required><option value="">请选择</option>{% for job in jobs %}<option value="{{ job['id'] }}" {% if snapshot and snapshot['job_id'] == job['id'] %}selected{% endif %}>{{ job['name'] }}</option>{% endfor %}</select></label>
+    <label><span>地区 *</span><input name="region" required value="{{ snapshot['region'] if snapshot else '上海' }}"></label>
+    <label><span>周期开始 *</span><input name="period_start" type="date" required value="{{ snapshot['period_start'] if snapshot else '' }}"></label>
+    <label><span>周期结束 *</span><input name="period_end" type="date" required value="{{ snapshot['period_end'] if snapshot else '' }}"></label>
+    <label><span>观察招聘数</span><input name="observed_posting_count" type="number" min="0" value="{{ snapshot['observed_posting_count'] if snapshot else 0 }}"></label>
+    <label><span>样本量 *</span><input name="sample_size" type="number" min="0" value="{{ snapshot['sample_size'] if snapshot else 0 }}"></label>
+    <label><span>薪资最低</span><input name="salary_min" type="number" min="0" value="{{ snapshot['salary_min'] if snapshot and snapshot['salary_min'] is not none else '' }}"></label>
+    <label><span>薪资中位</span><input name="salary_median" type="number" min="0" value="{{ snapshot['salary_median'] if snapshot and snapshot['salary_median'] is not none else '' }}"></label>
+    <label><span>薪资最高</span><input name="salary_max" type="number" min="0" value="{{ snapshot['salary_max'] if snapshot and snapshot['salary_max'] is not none else '' }}"></label>
+    <label><span>币种</span><input name="currency" value="{{ snapshot['currency'] if snapshot else 'CNY' }}"></label>
+    <label><span>薪资周期</span><select name="salary_period"><option {% if snapshot and snapshot['salary_period'] == '月' %}selected{% endif %}>月</option><option {% if snapshot and snapshot['salary_period'] == '年' %}selected{% endif %}>年</option></select></label>
+    <label><span>受控数据源 *</span><select name="source_id" required><option value="">请选择</option>{% for source in sources %}<option value="{{ source['id'] }}" {% if snapshot and snapshot['source_id'] == source['id'] %}selected{% endif %}>{{ source['name'] }}</option>{% endfor %}</select></label>
+    <label class="span-2"><span>证据摘要 *</span><textarea name="evidence_summary" rows="3" required>{{ snapshot['evidence_summary'] if snapshot else '' }}</textarea></label>
+    <label class="span-2"><span>限制说明 *</span><textarea name="limitation_note" rows="3" required>{{ snapshot['limitation_note'] if snapshot else '合成测试样本，不代表真实招聘市场' }}</textarea></label>
+    <label><span>负责人 *</span><select name="owner_user_id" required><option value="">请选择</option>{% for user in users if user['is_active'] %}<option value="{{ user['id'] }}" {% if snapshot and snapshot['owner_user_id'] == user['id'] %}selected{% endif %}>{{ user['display_name'] }}</option>{% endfor %}</select></label>
+    <label><span>审核人 *</span><select name="reviewer_user_id" required><option value="">请选择</option>{% for user in users if user['is_active'] %}<option value="{{ user['id'] }}" {% if snapshot and snapshot['reviewer_user_id'] == user['id'] %}selected{% endif %}>{{ user['display_name'] }}</option>{% endfor %}</select></label>
+    <label><span>下次复核 *</span><input name="next_check_at" type="date" required value="{{ snapshot['next_check_at'] if snapshot else '' }}"></label>
+
+    <section class="span-2 panel">
+      <h2>市场分布</h2>
+      <p class="field-note">可记录学历、经验、热门技能或地区分布；空行会被忽略，半填行会被拒绝。</p>
+      <div class="table-wrap"><table><thead><tr><th>维度</th><th>标签</th><th>数值</th><th>单位</th><th>样本量</th></tr></thead><tbody>
+        {% set rows = breakdowns if breakdowns else [none, none, none, none] %}
+        {% for row in rows %}<tr>
+          <td><select name="breakdown_type"><option value=""></option>{% for kind in ['学历','经验','热门技能','地区'] %}<option {% if row and row['dimension_type'] == kind %}selected{% endif %}>{{ kind }}</option>{% endfor %}</select></td>
+          <td><input name="breakdown_label" value="{{ row['label'] if row else '' }}"></td>
+          <td><input name="breakdown_value" type="number" step="0.01" min="0" value="{{ row['value'] if row else '' }}"></td>
+          <td><input name="breakdown_unit" value="{{ row['unit'] if row else '%' }}"></td>
+          <td><input name="breakdown_sample_size" type="number" min="0" value="{{ row['sample_size'] if row else '' }}"></td>
+        </tr>{% endfor %}
+      </tbody></table></div>
+    </section>
+    <div class="form-actions span-2"><button class="button" type="submit">保存草稿</button></div>
+  </form></section>
+{% endblock %}
