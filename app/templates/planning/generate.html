@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}生成初步规划：{{ student.name }} - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">第 4 步 · 形成规划</p>
+      <h1>生成 {{ student.name }}的规划书</h1>
+      <p class="muted">规划书应承接前面的信息、诊断、岗位技能差距和考试安排。</p>
+    </div>
+    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回流程总览</a>
+  </section>
+
+  {% if error %}
+    <section class="panel">
+      <p class="empty">{{ error }}</p>
+    </section>
+  {% endif %}
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>生成前检查</h2>
+      {% if completion.ready_for_ai %}
+        <span class="ai-ready-banner ready" style="margin-bottom:0;">AI 生成就绪</span>
+      {% else %}
+        <span class="ai-ready-banner not-ready" style="margin-bottom:0;">信息仍需补充</span>
+      {% endif %}
+    </div>
+    <div class="completion-grid">
+      {% set items = [
+        ('学生问卷', completion.student_questionnaire, '已填写'),
+        ('家长问卷', completion.parent_questionnaire, '已填写'),
+        ('材料上传', completion.materials, '已上传材料'),
+        ('免责确认', completion.disclaimer, '已确认免责'),
+        ('教师沟通纪要', completion.teacher_notes, '已填写'),
+      ] %}
+      {% for label, status, done_val in items %}
+        <div class="completion-item {{ 'done' if status == done_val else 'pending' }}">
+          <span class="completion-dot"></span>
+          <span>{{ label }}</span>
+          <span style="margin-left:auto;font-size:11px;opacity:0.8;">{{ status }}</span>
+        </div>
+      {% endfor %}
+    </div>
+    <form class="form-actions" method="post">
+      {% if completion.ready_for_ai %}
+        <button class="button" type="submit">生成初步规划</button>
+      {% else %}
+        <button class="button disabled" type="submit" disabled>生成初步规划</button>
+      {% endif %}
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><div><h2>本学生的规划版本</h2><p class="muted">从最早草稿到已确认版本都保留在这里。</p></div></div>
+    {% if documents %}<div class="document-strip">{% for document in documents %}<a href="{{ url_for('planning.detail', student_id=student.id, document_id=document['id']) }}"><strong>V{{ document['version'] }} · {{ document['status'] }}</strong><span>{{ document['title'] }}</span><small>{{ document['visibility'] }} · {{ document['updated_at'][:16] }}</small></a>{% endfor %}</div>{% else %}<p class="empty">还没有规划版本。完成前面三个阶段后再生成第一版。</p>{% endif %}
+  </section>
+{% endblock %}

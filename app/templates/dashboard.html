@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}首页工作台 - Academic Planning - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">今日工作</p>
+      <h1>继续学生规划</h1>
+      <p class="muted">先选择学生，再沿规划流程推进；资料库只在需要补充依据时使用。</p>
+    </div>
+    <a class="button" href="{{ url_for('students.new') }}">新增学生</a>
+  </section>
+
+  <section class="summary-grid">
+    <article class="metric">
+      <span>学生总数</span>
+      <strong>{{ total_students }}</strong>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>最近学生</h2>
+      <a href="{{ url_for('students.list_view') }}">查看全部</a>
+    </div>
+    {% if students %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>学校</th>
+              <th>当前环节</th>
+              <th>进度</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in students %}
+              <tr>
+                <td><a href="{{ url_for('students.detail', student_id=student.id) }}">{{ student.name }}</a></td>
+                <td>{{ student.school }}</td>
+                <td>第{{ workflows[student.id].next_stage.number }}步 · {{ workflows[student.id].next_stage.title }}</td>
+                <td>{{ workflows[student.id].progress }}%</td>
+                <td><a href="{{ url_for('students.detail', student_id=student.id) }}">继续规划 →</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty">还没有学生档案。</p>
+    {% endif %}
+  </section>
+{% endblock %}

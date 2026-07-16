@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}补充协议草稿：{{ student.name }} - 学业规划工作台{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">补充协议</p>
+      <h1>{{ student.name }}重规划补充协议草稿</h1>
+    </div>
+    <div class="action-list">
+      <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回档案</a>
+      <a class="button secondary" href="{{ url_for('replanning.new', student_id=student.id) }}">新增变更</a>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>变更摘要</h2>
+      <!-- 状态切换表单 -->
+      <form method="post"
+            action="{{ url_for('replanning.update_status', student_id=student.id, case_id=case['id']) }}"
+            style="display:inline;">
+        <div class="status-selector-wrap">
+          <select name="status" class="status-select status-{{ case['status'] }}"
+                  onchange="this.form.submit()" title="点击切换状态">
+            {% for s in ("草稿", "已确认", "执行中", "已完成", "已取消") %}
+              <option value="{{ s }}" {% if case["status"] == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+          <span class="status-hint">点击可切换</span>
+        </div>
+      </form>
+    </div>
+    <dl class="info-list">
+      <div><dt>原目标</dt><dd>{{ case["original_goal"] or "-" }}</dd></div>
+      <div><dt>触发事件</dt><dd>{{ case["trigger_event"] or "-" }}</dd></div>
+      <div><dt>责任归因</dt><dd>{{ case["responsibility_type"] or "-" }}</dd></div>
+      <div><dt>新第一目标</dt><dd>{{ case["new_primary_goal"] or "-" }}</dd></div>
+      <div><dt>费用调整</dt><dd>{{ case["fee_adjustment_type"] or "-" }}</dd></div>
+      <div><dt>新增费用</dt><dd>{{ case["additional_fee"] or "-" }}</dd></div>
+      <div><dt>创建时间</dt><dd>{{ case["created_at"][:10] if case["created_at"] else "-" }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>协议草稿</h2>
+    </div>
+    <pre class="markdown-preview">{{ case["agreement_terms"] }}</pre>
+  </section>
+
+<style>
+.status-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 5px 28px 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--line);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: box-shadow 0.15s;
+}
+
+.status-select:focus { outline: none; box-shadow: 0 0 0 3px rgba(31,111,235,0.15); }
+
+/* 各状态颜色 */
+.status-草稿   { background-color: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
+.status-已确认 { background-color: #eff6ff; color: #2563eb; border-color: #93c5fd; }
+.status-执行中 { background-color: #fefce8; color: #ca8a04; border-color: #fde68a; }
+.status-已完成 { background-color: #f0fdf4; color: #16a34a; border-color: #86efac; }
+.status-已取消 { background-color: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+
+.status-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+</style>
+{% endblock %}

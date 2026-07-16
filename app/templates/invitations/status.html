@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% set public_invite = true %}
+{% block title %}问卷状态 - 学业规划{% endblock %}
+{% block content %}
+<div class="invite-status-page">
+  <div class="invite-status-icon">{% if state == "提交成功" %}✓{% else %}!{% endif %}</div>
+  <h1>{% if state == "提交成功" %}提交成功{% else %}邀请{{ state }}{% endif %}</h1>
+  <p>{% if state == "提交成功" %}老师已收到问卷，感谢您的认真填写。现在可以安全关闭本页。{% else %}该填写链接已无法继续使用，请联系规划老师重新获取二维码。{% endif %}</p>
+</div>
+<style>.public-questionnaire-page{max-width:700px}.invite-status-page{max-width:520px;margin:12vh auto;padding:42px;text-align:center;border:1px solid var(--line);border-radius:18px;background:#fff}.invite-status-icon{display:flex;align-items:center;justify-content:center;width:64px;height:64px;margin:0 auto 18px;border-radius:50%;background:#eaf7f0;color:#087443;font-size:34px;font-weight:800}.invite-status-page h1{margin:0 0 10px}.invite-status-page p{margin:0;color:var(--muted);line-height:1.8}</style>
+{% endblock %}

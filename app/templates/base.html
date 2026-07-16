@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}学业规划工作台{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    {% if not public_invite %}<header class="topbar">
+      <a class="brand" href="{{ url_for('dashboard.dashboard') }}">学业规划工作台</a>
+      <nav class="nav" aria-label="主导航">
+        <a href="{{ url_for('dashboard.dashboard') }}">首页</a>
+        <a href="{{ url_for('students.list_view') }}">学生工作台</a>
+        {% if current_user %}<details class="nav-tools"><summary>后台资料库</summary><div class="nav-tools-menu"><a href="{{ url_for('intelligence.knowledge_index') }}">专业·岗位·技能</a><a href="{{ url_for('intelligence.industries_index') }}">产业与就业数据</a><a href="{{ url_for('intelligence.exams_index') }}">考试信息源</a></div></details>{% endif %}
+        {% if current_user and current_user["role"] == "admin" %}<a href="{{ url_for('auth.users') }}">账号管理</a>{% endif %}
+        {% if current_user %}
+          <span class="nav-user">{{ current_user["display_name"] }}</span>
+          <form method="post" action="{{ url_for('auth.logout') }}" class="nav-logout"><button type="submit">退出</button></form>
+        {% endif %}
+      </nav>
+    </header>{% endif %}
+    <main class="page{% if public_invite %} public-questionnaire-page{% endif %}">
+      {% if not public_invite %}{% include "students/_workspace_nav.html" %}{% endif %}
+      {% if request.endpoint and request.endpoint.startswith('intelligence.') %}<div class="backoffice-banner"><strong>后台资料库</strong><span>这里维护可复用的专业、岗位、产业和考试依据；真正的学生决策请回到具体学生的“目标与情报”环节完成。</span><a href="{{ url_for('students.list_view') }}">返回学生工作台</a></div>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
+    <style>.nav-user{color:var(--muted);font-size:13px}.nav-logout{margin:0}.nav-logout button{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:13px;cursor:pointer}</style>
+  </body>
+</html>

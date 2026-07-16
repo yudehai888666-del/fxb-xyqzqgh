@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.tools/
+*.pyc
+instance/
+uploads/
+generated/
+backups/
+tmp/
+*.sqlite3
+*.db
+.DS_Store

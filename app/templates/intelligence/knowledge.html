@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}专业—岗位—技能知识库 - 学业规划工作台{% endblock %}
+{% block content %}
+  <section class="page-heading">
+    <div><p class="eyebrow">规划依据</p><h1>专业—岗位—技能知识库</h1></div>
+  </section>
+
+  {% if message %}<div class="notice">{{ message }}</div>{% endif %}
+
+  <section class="summary-grid">
+    <article class="metric"><span>专业条目</span><strong>{{ majors|length }}</strong></article>
+    <article class="metric"><span>岗位条目</span><strong>{{ jobs|length }}</strong></article>
+    <article class="metric"><span>技能条目</span><strong>{{ skills|length }}</strong></article>
+    <article class="metric"><span>专业—岗位路径</span><strong>{{ graph_links|length }}</strong></article>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><div><h2>关系视图</h2><p class="muted">每条结论保留来源、审核状态和岗位技能要求，后续可直接用于学生匹配与图文报告。</p></div></div>
+    {% if graph_links %}
+      <div class="table-wrap"><table><thead><tr><th>专业</th><th>岗位 / 产业</th><th>发展方向</th><th>技能要求</th><th>关系强度</th></tr></thead><tbody>
+      {% for link in graph_links %}<tr>
+        <td>{{ link["major_name"] }}<br><span class="status-chip">{{ link["major_status"] }}</span></td>
+        <td>{{ link["job_name"] }}<br><span class="muted">{{ link["industry_name"] or "产业待补充" }}</span></td>
+        <td>{{ link["development_direction"] or "待补充" }}</td>
+        <td>{{ link["skills"] or "尚未关联技能" }}</td>
+        <td>{{ link["relevance_level"] }}</td>
+      </tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}<p class="empty">尚未建立关系。先录入专业、岗位和技能，再在下方建立连接。</p>{% endif %}
+  </section>
+
+  {% if current_user and current_user["role"] in ("admin", "teacher") %}
+  <section class="detail-grid knowledge-entry-grid">
+    <article class="panel"><h2>录入专业</h2><form method="post" action="{{ url_for('intelligence.create_major') }}" class="stack-form">
+      <label><span>专业名称 *</span><input name="name" required placeholder="如：经济学"></label>
+      <label><span>学科门类</span><input name="discipline_category" placeholder="如：经济学类"></label>
+      <label><span>培养层次</span><select name="degree_level"><option>本科</option><option>专科</option><option>硕士</option></select></label>
+      <label><span>专业说明</span><textarea name="description" rows="3"></textarea></label>
+      <label><span>来源名称</span><input name="source_name" placeholder="如：教育部专业目录"></label>
+      <label><span>来源链接</span><input name="source_url" type="url" placeholder="https://..."></label>
+      <button class="button" type="submit">保存专业草稿</button>
+    </form></article>
+
+    <article class="panel"><h2>录入岗位</h2><form method="post" action="{{ url_for('intelligence.create_job') }}" class="stack-form">
+      <label><span>岗位名称 *</span><input name="name" required placeholder="如：数据分析师"></label>
+      <label><span>所属产业</span><input name="industry_name" placeholder="如：数字经济"></label>
+      <label><span>岗位族</span><input name="job_family" placeholder="如：数据与商业分析"></label>
+      <label><span>岗位说明</span><textarea name="description" rows="2"></textarea></label>
+      <label><span>产业 / 岗位发展方向</span><textarea name="development_direction" rows="3" placeholder="记录增长方向、技术变化及区域趋势"></textarea></label>
+      <label><span>来源名称</span><input name="source_name"></label>
+      <label><span>来源链接</span><input name="source_url" type="url" placeholder="https://..."></label>
+      <button class="button" type="submit">保存岗位草稿</button>
+    </form></article>
+
+    <article class="panel"><h2>录入技能</h2><form method="post" action="{{ url_for('intelligence.create_skill') }}" class="stack-form">
+      <label><span>技能名称 *</span><input name="name" required placeholder="如：SQL 数据查询"></label>
+      <label><span>技能类型</span><select name="skill_type"><option>专业技能</option><option>工具技能</option><option>通用能力</option><option>证书资质</option><option>行业知识</option></select></label>
+      <label><span>技能说明</span><textarea name="description" rows="3"></textarea></label>
+      <label><span>来源名称</span><input name="source_name"></label>
+      <label><span>来源链接</span><input name="source_url" type="url" placeholder="https://..."></label>
+      <button class="button" type="submit">保存技能草稿</button>
+    </form></article>
+  </section>
+
+  <section class="detail-grid">
+    <article class="panel"><h2>连接专业与岗位</h2><form method="post" action="{{ url_for('intelligence.create_major_job_link') }}" class="stack-form">
+      <label><span>专业</span><select name="major_id" required><option value="">请选择</option>{% for item in majors %}<option value="{{ item['id'] }}">{{ item['name'] }}</option>{% endfor %}</select></label>
+      <label><span>岗位</span><select name="job_id" required><option value="">请选择</option>{% for item in jobs %}<option value="{{ item['id'] }}">{{ item['name'] }}</option>{% endfor %}</select></label>
+      <label><span>关系强度</span><select name="relevance_level"><option>高度相关</option><option selected>相关</option><option>可转入</option></select></label>
+      <label><span>依据说明</span><textarea name="evidence_note" rows="2"></textarea></label>
+      <label><span>依据链接</span><input name="source_url" type="url"></label>
+      <button class="button" type="submit">保存专业—岗位关系</button>
+    </form></article>
+
+    <article class="panel"><h2>连接岗位与技能</h2><form method="post" action="{{ url_for('intelligence.create_job_skill_link') }}" class="stack-form">
+      <label><span>岗位</span><select name="job_id" required><option value="">请选择</option>{% for item in jobs %}<option value="{{ item['id'] }}">{{ item['name'] }}</option>{% endfor %}</select></label>
+      <label><span>技能</span><select name="skill_id" required><option value="">请选择</option>{% for item in skills %}<option value="{{ item['id'] }}">{{ item['name'] }}</option>{% endfor %}</select></label>
+      <label><span>重要程度</span><select name="importance_level"><option>核心</option><option>重要</option><option>加分项</option></select></label>
+      <label><span>能力要求</span><select name="proficiency_level"><option>了解</option><option selected>掌握</option><option>熟练</option><option>精通</option></select></label>
+      <label><span>依据说明</span><textarea name="evidence_note" rows="2"></textarea></label>
+      <label><span>依据链接</span><input name="source_url" type="url"></label>
+      <button class="button" type="submit">保存岗位—技能关系</button>
+    </form></article>
+  </section>
+  {% endif %}
+
+  <section class="panel"><h2>条目审核</h2><div class="table-wrap"><table><thead><tr><th>类型</th><th>名称</th><th>来源</th><th>状态</th>{% if current_user and current_user['role'] == 'admin' %}<th>审核操作</th>{% endif %}</tr></thead><tbody>
+    {% for kind, items in [('major', majors), ('job', jobs), ('skill', skills)] %}{% for item in items %}<tr>
+      <td>{{ {'major':'专业','job':'岗位','skill':'技能'}[kind] }}</td><td>{{ item['name'] }}</td>
+      <td>{% if item['source_url'] %}<a href="{{ item['source_url'] }}" target="_blank" rel="noopener">{{ item['source_name'] or '查看来源' }}</a>{% else %}<span class="muted">待补来源</span>{% endif %}</td>
+      <td><span class="status-chip">{{ item['status'] }}</span></td>
+      {% if current_user and current_user['role'] == 'admin' %}<td><form method="post" action="{{ url_for('intelligence.update_knowledge_status', kind=kind, record_id=item['id']) }}" class="inline-form"><select name="status"><option>待审核</option><option>已发布</option><option>已退回</option><option>草稿</option></select><button class="button secondary" type="submit">更新</button></form></td>{% endif %}
+    </tr>{% endfor %}{% endfor %}
+    {% if not majors and not jobs and not skills %}<tr><td colspan="5" class="empty">暂无条目。</td></tr>{% endif %}
+  </tbody></table></div></section>
+{% endblock %}

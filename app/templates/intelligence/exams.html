@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}考试动态 - 学业规划工作台{% endblock %}
+{% block content %}
+  <section class="page-heading"><div><p class="eyebrow">实时信息治理</p><h1>考试动态与负责人</h1></div>{% if current_user and current_user['role'] in ('admin','teacher') %}<a class="button" href="{{ url_for('intelligence.exam_new') }}">录入考试信息</a>{% endif %}</section>
+  <section class="panel"><p class="muted">系统记录采集、审核、学生执行与下次核查责任。发布前必须填写官网来源、审核人和核查时间。</p>
+  {% if exams %}<div class="table-wrap"><table><thead><tr><th>考试</th><th>关键日期</th><th>责任链</th><th>下次核查</th><th>版本 / 状态</th></tr></thead><tbody>
+    {% for exam in exams %}<tr>
+      <td><a href="{{ url_for('intelligence.exam_detail', exam_id=exam['id']) }}">{{ exam['exam_name'] }}</a><br><span class="muted">{{ exam['category'] or '未分类' }} · {{ exam['region'] }}</span></td>
+      <td>报名：{{ exam['registration_start'] or '待定' }} 至 {{ exam['registration_end'] or '待定' }}<br>考试：{{ exam['exam_date'] or '待定' }}</td>
+      <td>采集：{{ exam['collector_name'] or '未指定' }}<br>审核：{{ exam['reviewer_name'] or '未指定' }}<br>执行：{{ exam['execution_owner_name'] or '未指定' }}</td>
+      <td>{{ exam['next_check_at'] or '未设置' }}</td><td>V{{ exam['version'] }} · <span class="status-chip">{{ exam['status'] }}</span></td>
+    </tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="empty">暂无考试动态。先录入一条官方信息，建立负责人和更新记录。</p>{% endif %}</section>
+{% endblock %}

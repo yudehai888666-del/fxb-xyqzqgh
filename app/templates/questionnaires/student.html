@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}学生问卷：{{ student.name }} - 学业规划工作台{% endblock %}
+
+{% block content %}
+<div class="q-page">
+
+  <!-- 顶部标题 -->
+  <div class="q-header">
+    <div class="q-header-left">
+      {% if not public_invite %}<div class="q-breadcrumb">
+        <a href="{{ url_for('students.detail', student_id=student.id) }}">{{ student.name }}</a>
+        <span>›</span>
+        <span>学生问卷</span>
+      </div>{% endif %}
+      <h1 class="q-title">
+        <span class="q-title-icon">🎓</span>
+        学生问卷
+      </h1>
+      <p class="q-subtitle">{{ student.name }}，请据实填写当前适应状态、学业情况、兴趣优势与未来意向。</p>
+    </div>
+    {% if not public_invite %}<a class="q-btn-back" href="{{ url_for('students.detail', student_id=student.id) }}">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      返回档案
+    </a>{% endif %}
+  </div>
+
+  <!-- 进度提示条 -->
+  <div class="q-progress-bar">
+    <div class="q-progress-inner">
+      <span class="q-progress-label">📋 共 7 个问题，填写越详细，规划方案越精准</span>
+      <span class="q-progress-tip">所有字段均可选填，请据实填写</span>
+    </div>
+  </div>
+
+  <form method="post">
+
+    <!-- ── 第一组：当前状态 ── -->
+    <div class="q-section">
+      <div class="q-section-header q-color-blue">
+        <div class="q-section-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <div>
+          <h2 class="q-section-title">一、当前学习状态</h2>
+          <p class="q-section-desc">帮助老师了解你现在的适应情况和学业基础</p>
+        </div>
+      </div>
+
+      <div class="q-card-field q-accent-blue">
+        <div class="q-card-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          适应情况
+        </div>
+        <p class="q-helper">请描述你目前大学生活的整体适应状况，例如课程节奏、人际关系、校园环境、作息规律等。</p>
+        <textarea class="q-textarea" name="adaptation_status" rows="6"
+          placeholder="例如：整体适应良好，课程节奏比高中轻松一些；宿舍关系不错；课外活动参加了学生会……">{{ questionnaire["adaptation_status"] if questionnaire else "" }}</textarea>
+      </div>
+
+      <div class="q-card-field q-accent-blue">
+        <div class="q-card-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          学业情况
+        </div>
+        <p class="q-helper">请写出你的绩点/专业排名情况，以及各主要课程的学习状态和掌握程度。</p>
+        <textarea class="q-textarea" name="academic_status" rows="6"
+          placeholder="例如：目前绩点 3.6，专业排名前 20%；高数和英语成绩不错，但编程基础较弱……">{{ questionnaire["academic_status"] if questionnaire else "" }}</textarea>
+      </div>
+
+      <div class="q-card-field q-accent-indigo">
+        <div class="q-card-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          薄弱科目
+        </div>
+        <p class="q-helper">列出你觉得比较吃力、成绩不理想，或者担心影响绩点和升学的科目。</p>
+        <textarea class="q-textarea" name="weak_subjects" rows="5"
+          placeholder="例如：高等数学（容易丢分）、大学英语（听力较弱）、C 语言（基础薄弱）……">{{ questionnaire["weak_subjects"] if questionnaire else "" }}</textarea>
+      </div>
+    </div>
+
+    <!-- ── 第二组：规划方向 ── -->
+    <div class="q-section">
+      <div class="q-section-header q-color-violet">
+        <div class="q-section-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div>
+          <h2 class="q-section-title">二、方向与动力</h2>
+          <p class="q-section-desc">帮助老师了解你的目标、优势和学习驱动力</p>
+        </div>
+      </div>
+
+      <div class="q-card-field q-accent-violet">
+        <div class="q-card-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          辅导需求
+        </div>
+        <p class="q-helper">你希望在哪些课程、技能或备考方向上获得专项辅导支持？</p>
+        <textarea class="q-textarea" name="tutoring_needs" rows="5"
+          placeholder="例如：希望补强高数基础；需要英语四六级专项辅导；考研数学需要系统规划……">{{ questionnaire["tutoring_needs"] if questionnaire else "" }}</textarea>
+      </div>
+
+      <div class="q-card-field q-accent-violet">
+        <div class="q-card-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          兴趣与优势
+        </div>
+        <p class="q-helper">描述你的学术兴趣、擅长领域，以及已有的特长、竞赛经历、证书资质等。</p>
+        <textarea class="q-textarea" name="interests_strengths" rows="6"
+          placeholder="例如：对数据分析和编程感兴趣；英语 CET-6 已通过；参加过数学建模竞赛；擅长写作……">{{ questionnaire["interests_strengths"] if questionnaire else "" }}</textarea>
+      </div>
+
+      <div class="q-card-field q-accent-green">
+        <div class="q-card-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          未来意向
+        </div>
+        <p class="q-helper">你目前更倾向于保研、考研、留学还是直接就业？有具体目标院校、专业或行业方向吗？</p>
+        <textarea class="q-textarea" name="future_intentions" rows="6"
+          placeholder="例如：第一意向考研，目标北京高校金融专业；也考虑出国读研作为备选……">{{ questionnaire["future_intentions"] if questionnaire else "" }}</textarea>
+      </div>
+
+      <div class="q-card-field q-accent-amber">
+        <div class="q-card-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          动力状态
+        </div>
+        <p class="q-helper">你目前的学习动力和状态如何？有什么困惑、迷茫，或者让你坚持下去的目标驱动力？</p>
+        <textarea class="q-textarea" name="motivation_status" rows="6"
+          placeholder="例如：目标明确，动力较强，但有时容易焦虑；不太清楚考研和工作哪个更适合自己……">{{ questionnaire["motivation_status"] if questionnaire else "" }}</textarea>
+      </div>
+    </div>
+
+    <!-- 提交栏 -->
+    <div class="q-actions">
+      {% if not public_invite %}<a class="q-btn-cancel" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>{% endif %}
+      <button class="q-btn-submit" type="submit">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        {% if public_invite %}确认并提交给老师{% else %}保存学生问卷{% endif %}
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<style>
+/* ── 问卷页通用样式（与家长问卷共用同名 class） ── */
+.q-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 0 80px;
+}
+
+.q-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.q-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.q-breadcrumb a { color: var(--primary); font-weight: 500; }
+
+.q-title {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.q-title-icon { font-size: 24px; }
+
+.q-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 560px;
+}
+
+.q-btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.q-btn-back:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(31,111,235,0.1);
+  text-decoration: none;
+}
+
+.q-progress-bar {
+  padding: 14px 20px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+  border: 1px solid #c4b5fd;
+  border-radius: 12px;
+}
+.q-progress-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.q-progress-label { font-size: 13px; font-weight: 600; color: #4f46e5; }
+.q-progress-tip   { font-size: 12px; color: var(--muted); }
+
+/* Section 卡片 */
+.q-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.q-section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.q-section-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.q-color-blue   .q-section-icon { background: #dbeafe; color: #2563eb; }
+.q-color-violet .q-section-icon { background: #ede9fe; color: #6d28d9; }
+
+.q-section-title { margin: 0 0 3px; font-size: 16px; font-weight: 700; color: var(--text); }
+.q-section-desc  { margin: 0; font-size: 13px; color: var(--muted); }
+
+/* 字段卡片 */
+.q-card-field {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+  border-left: 4px solid transparent;
+  transition: background 0.15s;
+}
+.q-card-field:last-child { border-bottom: none; }
+.q-card-field:hover { background: #fafbfc; }
+
+.q-accent-blue   { border-left-color: #3b82f6; }
+.q-accent-indigo { border-left-color: #6366f1; }
+.q-accent-violet { border-left-color: #7c3aed; }
+.q-accent-green  { border-left-color: #16a34a; }
+.q-accent-amber  { border-left-color: #d97706; }
+
+.q-card-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 5px;
+}
+
+.q-helper {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.q-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: #f9fafc;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.7;
+  resize: vertical;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.q-textarea:focus {
+  border-color: var(--primary);
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31,111,235,0.12);
+}
+
+/* 提交栏 */
+.q-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin-top: 4px;
+}
+
+.q-btn-cancel {
+  padding: 10px 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s, border-color 0.15s;
+}
+.q-btn-cancel:hover {
+  color: var(--text);
+  border-color: #9ca3af;
+  text-decoration: none;
+}
+
+.q-btn-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 24px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(79,70,229,0.35);
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+.q-btn-submit:hover {
+  box-shadow: 0 4px 16px rgba(79,70,229,0.45);
+  transform: translateY(-1px);
+}
+.q-btn-submit:active { transform: translateY(0); }
+
+@media (max-width: 680px) {
+  .q-header { flex-direction: column; }
+  .q-progress-inner { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .q-page { padding: 20px 0 60px; }
+}
+</style>
+{% endblock %}

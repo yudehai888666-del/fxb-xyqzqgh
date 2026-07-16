@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ student.name }}的规划工作台{% endblock %}
+{% block content %}
+  <section class="page-heading student-workspace-heading">
+    <div><p class="eyebrow">学生规划工作台</p><h1>{{ student.name }}的规划进程</h1><p class="muted">所有信息、判断、目标和文件都围绕这名学生按阶段推进。</p></div>
+    {% if current_user and current_user['role'] == 'admin' %}<a class="button secondary" href="{{ url_for('auth.student_access', student_id=student.id) }}">数据权限</a>{% endif %}
+  </section>
+
+  <section class="workspace-hero">
+    <div><span class="workspace-kicker">当前应处理</span><h2>第 {{ student_workflow.next_stage.number }} 步 · {{ student_workflow.next_stage.title }}</h2><p>{{ student_workflow.next_stage.summary }}</p></div>
+    <div class="workspace-hero-progress"><strong>{{ student_workflow.progress }}%</strong><span>整体规划进度</span><div><i style="width:{{ student_workflow.progress }}%"></i></div></div>
+  </section>
+
+  {% set stage_links = {
+    1: url_for('invitations.manage', student_id=student.id),
+    2: url_for('matching.report', student_id=student.id),
+    3: url_for('teacher_notes.edit', student_id=student.id),
+    4: url_for('planning.generate', student_id=student.id),
+    5: '#execution',
+    6: url_for('replanning.list_view', student_id=student.id)
+  } %}
+  <section class="workflow-card-grid">
+    {% for stage in student_workflow.stages %}<a class="workflow-card {{ stage.status }}" href="{{ stage_links[stage.number] }}"><div class="workflow-card-number">{{ stage.number }}</div><div><span>{{ '已完成' if stage.status == 'completed' else '进行中' if stage.status == 'in_progress' else '待开始' }}</span><h3>{{ stage.title }}</h3><p>{{ stage.summary }}</p></div><b>→</b></a>{% endfor %}
+  </section>
+
+  <section class="panel stage-panel" id="collection">
+    <div class="stage-panel-head"><div><span>第 1 步</span><h2>收集规划依据</h2><p>先拿到学生、家长、材料和免责确认，再进入老师判断。</p></div><a class="button" href="{{ url_for('invitations.manage', student_id=student.id) }}">进入信息采集</a></div>
+    <div class="evidence-status-grid">
+      {% for label, value, href in [
+        ('学生问卷', completion.student_questionnaire, url_for('questionnaires.student_questionnaire', student_id=student.id)),
+        ('家长问卷', completion.parent_questionnaire, url_for('questionnaires.parent_questionnaire', student_id=student.id)),
+        ('材料', completion.materials, url_for('questionnaires.materials', student_id=student.id)),
+        ('免责确认', completion.disclaimer, url_for('questionnaires.materials', student_id=student.id))
+      ] %}<a href="{{ href }}"><span>{{ label }}</span><strong>{{ value }}</strong></a>{% endfor %}
+    </div>
+  </section>
+
+  <section class="detail-grid">
+    <article class="panel stage-panel"><div class="stage-panel-head compact"><div><span>第 2 步</span><h2>确定目标与外部依据</h2></div><a href="{{ url_for('matching.report', student_id=student.id) }}">进入目标分析 →</a></div><div class="mini-metrics"><div><strong>{{ job_targets|length }}</strong><span>目标岗位</span></div><div><strong>{{ skill_assessments|length }}</strong><span>技能评估</span></div><div><strong>{{ exam_plans|length }}</strong><span>学生考试</span></div></div><p>在学生名下选择岗位、考试和产业依据，而不是脱离学生浏览资料库。</p></article>
+    <article class="panel stage-panel"><div class="stage-panel-head compact"><div><span>第 3 步</span><h2>形成老师诊断</h2></div><a href="{{ url_for('teacher_notes.edit', student_id=student.id) }}">{{ '查看诊断' if completion.teacher_notes == '已填写' else '填写诊断' }} →</a></div><p>结合问卷、材料、目标情报和访谈，记录目标可行性、学业风险、执行风险及家庭共识。</p><span class="stage-state {{ 'done' if completion.teacher_notes == '已填写' else '' }}">{{ completion.teacher_notes }}</span></article>
+  </section>
+
+  <section class="panel stage-panel">
+    <div class="stage-panel-head"><div><span>第 4 步</span><h2>形成、确认并交付规划书</h2><p>目标与证据清楚后再生成规划，后续修改必须形成新版本。</p></div><a class="button" href="{{ url_for('planning.generate', student_id=student.id) }}">进入规划书</a></div>
+    {% if planning_documents %}<div class="document-strip">{% for document in planning_documents[:3] %}<a href="{{ url_for('planning.detail', student_id=student.id, document_id=document['id']) }}"><strong>V{{ document['version'] }} · {{ document['status'] }}</strong><span>{{ document['title'] }}</span><small>{{ document['visibility'] }}</small></a>{% endfor %}</div>{% else %}<p class="empty">目标分析完成后，从这里生成第一版规划书。</p>{% endif %}
+  </section>
+
+  <section class="panel stage-panel" id="execution">
+    <div class="stage-panel-head"><div><span>第 5 步</span><h2>执行、复盘与风险预警</h2><p>已确认的规划应转化为学期任务、90 天行动和定期复盘。</p></div><span class="stage-state">规划转行动</span></div>
+    <div class="execution-preview">
+      <article>
+        <div><strong>任务执行</strong><span>把规划目标拆成带截止日期的行动</span></div>
+        <span class="stage-state">待接入</span>
+      </article>
+      <article>
+        <div><strong>阶段复盘</strong><span>记录完成情况、证据和偏差原因</span></div>
+        <span class="stage-state">待接入</span>
+      </article>
+      <article>
+        <div><strong>风险预警</strong><span>挂科、报名截止、执行落后时提醒老师</span></div>
+        <span class="stage-state">待接入</span>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel stage-panel">
+    <div class="stage-panel-head"><div><span>第 6 步</span><h2>目标变化时进入重规划</h2><p>只有执行阶段出现目标失效或重大变化时，才进入补充协议和费用调整。</p></div><a class="button secondary" href="{{ url_for('replanning.list_view', student_id=student.id) }}">查看重规划记录</a></div>
+    {% if replanning_cases %}<p>已有 {{ replanning_cases|length }} 条变更记录，最近状态：<strong>{{ replanning_cases[0]['status'] }}</strong></p>{% else %}<p class="muted">当前没有变更记录，这是正常状态。</p>{% endif %}
+  </section>
+
+  <details class="panel student-profile-details"><summary>查看学生基础档案与家长联系人</summary><div class="detail-grid profile-detail-content"><dl class="info-list"><div><dt>性别</dt><dd>{{ student.gender }}</dd></div><div><dt>入学年份</dt><dd>{{ student.enrollment_year }}</dd></div><div><dt>学校</dt><dd>{{ student.school }}</dd></div><div><dt>学院与专业</dt><dd>{{ student.college or '-' }} / {{ student.major }}</dd></div><div><dt>城市</dt><dd>{{ student.city or '-' }}</dd></div><div><dt>负责老师</dt><dd>{{ student.responsible_teacher }}</dd></div></dl><div>{% if parents %}{% for parent in parents %}<p><strong>{{ parent.name }}</strong>（{{ parent.relationship }}）<br><span class="muted">{{ parent.phone or '无电话' }} · {{ parent.questionnaire_status }}</span></p>{% endfor %}{% else %}<p class="empty">暂无家长联系人。</p>{% endif %}</div></div></details>
+{% endblock %}
