@@ -24,6 +24,43 @@
 generated/plans/student-<学生ID>/plan-<规划ID>.md
 ```
 
+## 断点恢复启动
+
+如果开发中断、上下文丢失、或者需要从 Git 仓库恢复到保存好的最新版本，按下面顺序执行：
+
+```bash
+./scripts/bootstrap_latest.sh
+./scripts/start_local.sh
+```
+
+打开：
+
+```text
+http://127.0.0.1:5050
+```
+
+如果需要先检查当前版本是否具备启动条件：
+
+```bash
+./scripts/check_local.sh
+```
+
+## 临时公网访问
+
+需要把当前本地服务临时开放给外部访问时，先安装 `cloudflared`，然后执行：
+
+```bash
+./scripts/start_public.sh
+```
+
+macOS 安装 `cloudflared`：
+
+```bash
+brew install cloudflared
+```
+
+脚本会先确认本地服务运行在 `http://127.0.0.1:5050`，再开启临时公网。终端中出现的 `https://*.trycloudflare.com` 就是临时公网地址。
+
 ## 本地运行
 
 ```bash
