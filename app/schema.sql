@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS planning_documents (
     file_path TEXT NOT NULL DEFAULT '',
     version INTEGER NOT NULL DEFAULT 1,
     visibility TEXT NOT NULL DEFAULT '老师内部',
+    intelligence_report_id INTEGER REFERENCES student_intelligence_reports(id) ON DELETE RESTRICT,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
 );

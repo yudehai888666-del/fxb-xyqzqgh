@@ -2,7 +2,7 @@ from werkzeug.security import generate_password_hash
 
 from app import create_app, employment_repository, repositories
 from app.db import get_db
-from app.services import student_goals
+from app.services import intelligence_reports, student_goals
 
 
 def create_user(username="evidence-admin", role="admin"):
@@ -213,3 +213,33 @@ def complete_employment_student(app):
             actor["id"],
         )
         return student_id, link["skill_id"]
+
+
+def confirmed_test_report(app):
+    student_id, _ = complete_employment_student(app)
+    with app.app_context():
+        actor = repositories.get_user_by_username("workspace-admin")
+        report_id = intelligence_reports.generate(student_id, actor["id"])
+        intelligence_reports.confirm(report_id, student_id, actor["id"])
+        return student_id, report_id
+
+
+def create_and_confirm_second_report(student_id):
+    actor = repositories.get_user_by_username("workspace-admin")
+    report_id = intelligence_reports.generate(student_id, actor["id"])
+    intelligence_reports.confirm(report_id, student_id, actor["id"])
+    return report_id
+
+
+def create_test_data_plan(app):
+    student_id, report_id = confirmed_test_report(app)
+    with app.app_context():
+        document_id = repositories.create_planning_document(
+            student_id,
+            {
+                "title": "测试就业规划",
+                "content_markdown": "# 测试就业规划",
+                "intelligence_report_id": report_id,
+            },
+        )
+        return student_id, report_id, document_id

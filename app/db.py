@@ -55,6 +55,12 @@ def _run_lightweight_migrations(db):
         db.execute(
             "ALTER TABLE planning_documents ADD COLUMN visibility TEXT NOT NULL DEFAULT '老师内部'"
         )
+    _add_column_if_missing(
+        db,
+        "planning_documents",
+        "intelligence_report_id",
+        "INTEGER REFERENCES student_intelligence_reports(id) ON DELETE RESTRICT",
+    )
 
     material_columns = {
         row["name"] for row in db.execute("PRAGMA table_info(materials)")

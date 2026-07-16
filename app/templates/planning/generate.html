@@ -44,8 +44,13 @@
       {% endfor %}
     </div>
     <form class="form-actions" method="post">
+      {% if confirmed_reports %}
+        <label><span>就业情报报告版本</span><select name="intelligence_report_id" required>{% for report in confirmed_reports %}<option value="{{ report['id'] }}">V{{ report['version'] }} · {{ report['status'] }} · {{ report['data_classification'] }}</option>{% endfor %}</select></label>
+      {% endif %}
       {% if completion.ready_for_ai %}
         <button class="button" type="submit">生成初步规划</button>
+      {% elif confirmed_reports %}
+        <button class="button" type="submit">生成就业规划</button>
       {% else %}
         <button class="button disabled" type="submit" disabled>生成初步规划</button>
       {% endif %}

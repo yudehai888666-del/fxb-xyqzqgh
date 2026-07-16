@@ -1,4 +1,6 @@
-from app import repositories
+import json
+
+from app import employment_repository, repositories
 
 
 def row_to_dict(row):
@@ -25,7 +27,16 @@ def value(data, key, fallback="未填写"):
     return text or fallback
 
 
-def build_planning_context(student_id):
+def _frozen_employment_intelligence(student_id, report_id):
+    if not report_id:
+        return None
+    report = employment_repository.get_intelligence_report(int(report_id))
+    if report is None or report["student_id"] != student_id or report["status"] != "已确认":
+        raise ValueError("就业情报报告无效或尚未确认")
+    return {"report": dict(report), "snapshot": json.loads(report["snapshot_json"])}
+
+
+def build_planning_context(student_id, intelligence_report_id=None):
     student = repositories.get_student(student_id)
     if student is None:
         raise ValueError("学生不存在")
@@ -46,7 +57,31 @@ def build_planning_context(student_id):
             for disclaimer in repositories.list_disclaimers(student_id)
         ],
         "teacher_notes": row_to_dict(repositories.get_teacher_notes(student_id)),
+        "employment_intelligence": _frozen_employment_intelligence(
+            student_id, intelligence_report_id
+        ),
     }
+
+
+def _employment_intelligence_section(value):
+    if not value:
+        return ""
+    report = value["report"]
+    snapshot = value["snapshot"]
+    targets = "、".join(row["job_name"] for row in snapshot["targets"])
+    analysis = snapshot["teacher_analysis"]
+    lines = [
+        "## 就业目标与职业情报依据",
+        f"- 引用报告：V{report['version']}（{report['data_classification']}）",
+        f"- 目标岗位：{targets or '未填写'}",
+        f"- 适合原因：{analysis['suitability_summary']}",
+        f"- 主要风险：{analysis['risk_summary']}",
+        f"- 行动建议：{analysis['action_recommendations']}",
+        f"- 数据局限：{analysis['limitation_note']}",
+    ]
+    if report["data_classification"] == "测试数据":
+        lines.append("- 警告：测试数据，仅用于功能验证，不代表真实就业市场。")
+    return "\n".join(lines)
 
 
 def generate_information_basis(context):
@@ -91,6 +126,7 @@ def generate_initial_plan(context):
             _student_profile_section(student),
             "## 二、信息依据与免责声明\n"
             f"{generate_information_basis(context)}",
+            _employment_intelligence_section(context["employment_intelligence"]),
             _family_goals_section(parent_questionnaire, teacher_notes),
             _academic_support_section(student_questionnaire, teacher_notes),
             _major_transfer_section(student, student_questionnaire, teacher_notes),

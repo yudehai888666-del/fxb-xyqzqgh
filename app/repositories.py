@@ -377,9 +377,10 @@ def create_planning_document(student_id, data):
     cursor = db.execute(
         """
         INSERT INTO planning_documents (
-            student_id, title, status, content_markdown, file_path, version, visibility
+            student_id, title, status, content_markdown, file_path, version,
+            visibility, intelligence_report_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             student_id,
@@ -389,6 +390,7 @@ def create_planning_document(student_id, data):
             data.get("file_path", ""),
             data.get("version", version),
             data.get("visibility", "老师内部"),
+            _optional_int(data.get("intelligence_report_id")),
         ),
     )
     db.commit()

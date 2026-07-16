@@ -10,7 +10,8 @@ from flask import (
     url_for,
 )
 
-from app import repositories
+from app import employment_repository, repositories
+from app.services import student_goals
 from app.services.completion import get_student_completion
 from app.services.planning_files import save_planning_markdown
 from app.services.uploads import inspect_stored_file
@@ -28,20 +29,48 @@ def require_student(student_id):
     return student
 
 
+def _uses_test_intelligence(document):
+    report_id = document["intelligence_report_id"]
+    if not report_id:
+        return False
+    report = employment_repository.get_intelligence_report(report_id)
+    return report is not None and report["data_classification"] == "测试数据"
+
+
 @planning_bp.route("/generate", methods=("GET", "POST"))
 def generate(student_id):
     student = require_student(student_id)
     completion = get_student_completion(student_id)
     documents = repositories.list_planning_documents(student_id)
+    goal_profile = student_goals.get_goal_profile(student_id)
+    confirmed_reports = employment_repository.list_confirmed_intelligence_reports(
+        student_id, "就业"
+    )
 
     if request.method == "POST":
-        if not completion["ready_for_ai"]:
+        selected_report_id = request.form.get("intelligence_report_id", "").strip()
+        if goal_profile and goal_profile["primary_goal"] == "就业":
+            allowed = {str(row["id"]): row for row in confirmed_reports}
+            if selected_report_id not in allowed:
+                return (
+                    render_template(
+                        "planning/generate.html",
+                        student=student,
+                        completion=completion,
+                        documents=documents,
+                        confirmed_reports=confirmed_reports,
+                        error="请选择一个已确认的就业情报报告版本",
+                    ),
+                    400,
+                )
+        if not completion["ready_for_ai"] and not selected_report_id:
             return (
                 render_template(
                     "planning/generate.html",
                     student=student,
                     completion=completion,
                     documents=documents,
+                    confirmed_reports=confirmed_reports,
                     error="信息仍需补充，暂不能生成初步规划。",
                 ),
                 400,
@@ -50,7 +79,11 @@ def generate(student_id):
         document_id = None
         relative_path = None
         try:
-            draft = generate_initial_plan(build_planning_context(student_id))
+            draft = generate_initial_plan(
+                build_planning_context(student_id, selected_report_id or None)
+            )
+            if selected_report_id:
+                draft["intelligence_report_id"] = selected_report_id
             document_id = repositories.create_planning_document(student_id, draft)
             relative_path = save_planning_markdown(
                 student_id,
@@ -97,6 +130,7 @@ def generate(student_id):
                     student=student,
                     completion=completion,
                     documents=documents,
+                    confirmed_reports=confirmed_reports,
                     error="生成初步规划失败，请稍后重试。",
                 ),
                 500,
@@ -114,6 +148,7 @@ def generate(student_id):
         student=student,
         completion=completion,
         documents=documents,
+        confirmed_reports=confirmed_reports,
         error="",
     )
 
@@ -124,7 +159,12 @@ def detail(student_id, document_id):
     document = repositories.get_planning_document(document_id)
     if document is None or document["student_id"] != student_id:
         abort(404)
-    return render_template("planning/detail.html", student=student, document=document)
+    return render_template(
+        "planning/detail.html",
+        student=student,
+        document=document,
+        uses_test_intelligence=_uses_test_intelligence(document),
+    )
 
 
 @planning_bp.post("/documents/<int:document_id>/visibility")
@@ -136,6 +176,8 @@ def update_visibility(student_id, document_id):
     visibility = request.form.get("visibility", "").strip()
     if visibility not in VALID_VISIBILITIES:
         abort(400)
+    if _uses_test_intelligence(document) and visibility != "老师内部":
+        abort(409)
     repositories.update_planning_document_visibility(document_id, visibility)
     return redirect(
         url_for("planning.detail", student_id=student_id, document_id=document_id)
@@ -152,7 +194,7 @@ def edit(student_id, document_id):
         content = request.form.get("content_markdown", "").strip()
         if not content:
             return render_template("planning/edit.html", student=student, document=document, error="规划内容不能为空"), 400
-        new_id = repositories.create_planning_document(student_id, {"title": request.form.get("title", document["title"]).strip() or document["title"], "content_markdown": content, "visibility": document["visibility"]})
+        new_id = repositories.create_planning_document(student_id, {"title": request.form.get("title", document["title"]).strip() or document["title"], "content_markdown": content, "visibility": document["visibility"], "intelligence_report_id": document["intelligence_report_id"]})
         path = save_planning_markdown(student_id, new_id, document["title"], content)
         repositories.update_planning_document_file_path(new_id, path)
         new_doc = repositories.get_planning_document(new_id)
@@ -178,6 +220,8 @@ def export(student_id, document_id, file_format):
     document = repositories.get_planning_document(document_id)
     if document is None or document["student_id"] != student_id or file_format not in ("docx", "pdf"):
         abort(404)
+    if _uses_test_intelligence(document):
+        abort(409)
     destination = export_planning_docx(student, document) if file_format == "docx" else export_planning_pdf(student, document)
     relative = destination.relative_to(Path(current_app.config["GENERATED_DIR"])).as_posix()
     metadata = inspect_stored_file(destination, destination.name)

@@ -17,6 +17,7 @@
     <form method="post" action="{{ url_for('planning.export', student_id=student.id, document_id=document['id'], file_format='docx') }}"><button class="button secondary" type="submit">导出 Word</button></form>
     <form method="post" action="{{ url_for('planning.export', student_id=student.id, document_id=document['id'], file_format='pdf') }}"><button class="button secondary" type="submit">导出 PDF</button></form>
   </div><p class="muted">编辑会创建新版本，不覆盖当前内容；导出文件自动进入文件档案中心。</p></section>
+  {% if uses_test_intelligence %}<section class="panel"><div class="form-error">测试数据不能对外可见或导出</div></section>{% endif %}
 
   <section class="panel">
     <div class="panel-header">
