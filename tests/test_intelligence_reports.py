@@ -65,6 +65,17 @@ def test_report_detail_rejects_report_owned_by_another_student(client, app):
     assert client.get(f"/students/{other_id}/employment/reports/{report_id}").status_code == 404
 
 
+def test_report_detail_print_view_contains_test_data_and_limitations(client, app):
+    student_id, _ = complete_employment_student(app)
+    with app.app_context():
+        report_id = intelligence_reports.generate(student_id, actor_id=None)
+    report_text = client.get(
+        f"/students/{student_id}/employment/reports/{report_id}"
+    ).get_data(as_text=True)
+    assert "测试数据，仅用于功能验证" in report_text
+    assert "数据局限" in report_text
+
+
 def test_collaborator_cannot_generate_report(tmp_path):
     auth_app = make_auth_app(tmp_path, "report-collaborator")
     client = auth_app.test_client()

@@ -1014,6 +1014,22 @@ textarea {
   margin: 0 0 18px;
 }
 
+.employment-tabs {
+  overflow-x: auto;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.employment-tabs a[aria-current="page"] {
+  color: #2563eb;
+  border-bottom: 2px solid #2563eb;
+}
+
+.evidence-meta {
+  padding: 12px;
+  border-left: 3px solid #2563eb;
+  background: #f8fafc;
+}
+
 .tab-nav a {
   padding: 8px 12px;
   border: 1px solid var(--line);
@@ -1043,6 +1059,18 @@ textarea {
   display: block;
   height: 100%;
   background: var(--primary);
+}
+
+.skill-gap-bar > i {
+  display: block;
+  min-height: 10px;
+  background: #2563eb;
+}
+
+.test-data-banner {
+  border: 1px solid #fdba74;
+  background: #fff7ed;
+  color: #9a3412;
 }
 
 .bar-list {
@@ -1088,6 +1116,24 @@ textarea {
   }
   .backoffice-banner {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .employment-summary-grid,
+  .employment-two-column {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .employment-tabs,
+  .employment-actions,
+  .no-print {
+    display: none !important;
+  }
+  .employment-chart-table {
+    display: table !important;
   }
 }
 

@@ -19,6 +19,7 @@ def test_employment_workspace_has_six_deep_linkable_tabs(client, app):
     for label in ("目标岗位", "技能差距", "市场情报", "证书与考试", "老师结论", "报告版本"):
         assert label in text
     assert 'aria-current="page"' in text
+    assert 'aria-label="就业情报工作区"' in text
 
 
 def test_missing_student_employment_workspace_is_404(client):
@@ -52,6 +53,22 @@ def test_skill_gap_uses_only_governed_requirements(client, app):
     assert published_link_id != draft_link_id
     assert "已审核技能" in skill_names
     assert "草稿技能" not in skill_names
+    page = client.get(f"/students/{student_id}/employment?tab=skills")
+    text = page.get_data(as_text=True)
+    assert 'role="img"' in text
+    assert 'aria-label="当前水平' in text
+    assert "<table" in text
+
+
+def test_market_charts_have_table_fallback_and_safe_source_links(client, app):
+    from tests.employment_factories import complete_employment_student
+
+    student_id, _ = complete_employment_student(app)
+    page = client.get(f"/students/{student_id}/employment?tab=market")
+    text = page.get_data(as_text=True)
+    assert 'class="employment-chart-table"' in text
+    assert "<table" in text
+    assert 'target="_blank"' not in text or 'rel="noopener"' in text
 
 
 def test_analysis_draft_persists_and_unknown_tab_is_404(tmp_path):
