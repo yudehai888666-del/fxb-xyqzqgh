@@ -1,8 +1,10 @@
+import json
+
 from flask import Blueprint, abort, g, redirect, render_template, request, url_for
 
 from app import employment_repository, repositories
 from app.auth import role_required
-from app.services import employment_analysis
+from app.services import employment_analysis, intelligence_reports
 
 
 employment_bp = Blueprint(
@@ -51,6 +53,8 @@ def workspace(student_id):
         available_skills=repositories.list_published_skills(),
         available_exams=repositories.list_published_exams(),
         users=repositories.list_users() if can_edit else [],
+        reports=employment_repository.list_intelligence_reports(student_id, "就业"),
+        error=request.args.get("error", ""),
     )
 
 
@@ -117,3 +121,57 @@ def save_analysis(student_id):
     )
     _audit("update_employment_analysis", student_id)
     return redirect(url_for("employment.workspace", student_id=student_id, tab="analysis"))
+
+
+@employment_bp.post("/reports")
+@role_required("admin", "teacher")
+def generate_report(student_id):
+    _guard(student_id)
+    try:
+        report_id = intelligence_reports.generate(student_id, g.current_user["id"])
+    except intelligence_reports.ReportNotReady as exc:
+        return redirect(
+            url_for("employment.workspace", student_id=student_id, tab="reports", error=str(exc))
+        )
+    _audit("generate_intelligence_report", student_id, f"report={report_id}")
+    return redirect(url_for("employment.report_detail", student_id=student_id, report_id=report_id))
+
+
+@employment_bp.get("/reports/<int:report_id>")
+def report_detail(student_id, report_id):
+    report = employment_repository.get_intelligence_report(report_id)
+    if report is None or report["student_id"] != student_id:
+        abort(404)
+    return render_template(
+        "employment/report_detail.html",
+        report=report,
+        snapshot=json.loads(report["snapshot_json"]),
+    )
+
+
+@employment_bp.post("/reports/<int:report_id>/confirm")
+@role_required("admin", "teacher")
+def confirm_report(student_id, report_id):
+    _guard(student_id)
+    try:
+        intelligence_reports.confirm(report_id, student_id, g.current_user["id"])
+    except LookupError:
+        abort(404)
+    _audit("confirm_intelligence_report", student_id, f"report={report_id}")
+    return redirect(url_for("employment.report_detail", student_id=student_id, report_id=report_id))
+
+
+@employment_bp.post("/reports/<int:report_id>/void")
+@role_required("admin", "teacher")
+def void_report(student_id, report_id):
+    _guard(student_id)
+    try:
+        intelligence_reports.void(
+            report_id, student_id, request.form.get("void_reason", ""), g.current_user["id"]
+        )
+    except LookupError:
+        abort(404)
+    except ValueError as exc:
+        abort(400, description=str(exc))
+    _audit("void_intelligence_report", student_id, f"report={report_id}")
+    return redirect(url_for("employment.report_detail", student_id=student_id, report_id=report_id))

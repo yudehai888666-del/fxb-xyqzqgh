@@ -1,4 +1,4 @@
-from app import repositories
+from app import employment_repository, repositories
 from app.services import student_goals
 from app.services.completion import get_student_completion
 
@@ -9,6 +9,9 @@ def build_student_workflow(student_id):
     targets = repositories.list_student_job_targets(student_id)
     skills = repositories.list_student_skill_assessments(student_id)
     exams = repositories.list_student_exam_plans(student_id)
+    confirmed_employment_reports = employment_repository.list_confirmed_intelligence_reports(
+        student_id, "就业"
+    )
     documents = repositories.list_planning_documents(student_id)
     confirmed_documents = [row for row in documents if row["status"] == "已确认"]
     replanning_cases = repositories.list_replanning_cases(student_id)
@@ -26,8 +29,10 @@ def build_student_workflow(student_id):
         stage2 = "in_progress" if stage1 == "completed" else "pending"
         stage2_summary = "主目标待老师确认"
     elif goal_profile["primary_goal"] == "就业":
+        stage2 = "completed" if confirmed_employment_reports else "in_progress"
         stage2_summary = f"就业路径 · {len(targets)}个岗位目标 · {len(skills)}项技能"
     else:
+        stage2 = "in_progress"
         stage2_summary = "升学路径 · 专项模块待配置"
     stage3 = (
         "completed" if notes_done

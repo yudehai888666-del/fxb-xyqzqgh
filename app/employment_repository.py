@@ -284,3 +284,85 @@ def upsert_analysis_draft(student_id, data, actor_id):
         ),
     )
     db.commit()
+
+
+def next_report_version(student_id, goal_type):
+    return get_db().execute(
+        """SELECT COALESCE(MAX(version), 0) + 1
+           FROM student_intelligence_reports
+           WHERE student_id = ? AND goal_type = ?""",
+        (student_id, goal_type),
+    ).fetchone()[0]
+
+
+def insert_intelligence_report(
+    student_id, goal_type, version, classification, snapshot_json, actor_id
+):
+    cursor = get_db().execute(
+        """INSERT INTO student_intelligence_reports
+           (student_id, goal_type, version, data_classification, snapshot_json, created_by)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (student_id, goal_type, version, classification, snapshot_json, actor_id),
+    )
+    return cursor.lastrowid
+
+
+def get_intelligence_report(report_id):
+    return get_db().execute(
+        """SELECT r.*, creator.display_name AS creator_name,
+                  confirmer.display_name AS confirmer_name,
+                  voider.display_name AS voider_name
+           FROM student_intelligence_reports r
+           LEFT JOIN users creator ON creator.id = r.created_by
+           LEFT JOIN users confirmer ON confirmer.id = r.confirmed_by
+           LEFT JOIN users voider ON voider.id = r.voided_by
+           WHERE r.id = ?""",
+        (report_id,),
+    ).fetchone()
+
+
+def list_intelligence_reports(student_id, goal_type):
+    return get_db().execute(
+        """SELECT r.*, creator.display_name AS creator_name,
+                  confirmer.display_name AS confirmer_name,
+                  voider.display_name AS voider_name
+           FROM student_intelligence_reports r
+           LEFT JOIN users creator ON creator.id = r.created_by
+           LEFT JOIN users confirmer ON confirmer.id = r.confirmed_by
+           LEFT JOIN users voider ON voider.id = r.voided_by
+           WHERE r.student_id = ? AND r.goal_type = ?
+           ORDER BY r.version DESC""",
+        (student_id, goal_type),
+    ).fetchall()
+
+
+def list_confirmed_intelligence_reports(student_id, goal_type):
+    return get_db().execute(
+        """SELECT * FROM student_intelligence_reports
+           WHERE student_id = ? AND goal_type = ? AND status = '已确认'
+           ORDER BY version DESC""",
+        (student_id, goal_type),
+    ).fetchall()
+
+
+def set_report_confirmed(report_id, actor_id):
+    db = get_db()
+    db.execute(
+        """UPDATE student_intelligence_reports
+           SET status = '已确认', confirmed_by = ?, confirmed_at = CURRENT_TIMESTAMP
+           WHERE id = ? AND status = '待确认'""",
+        (actor_id, report_id),
+    )
+    db.commit()
+
+
+def set_report_voided(report_id, reason, actor_id):
+    db = get_db()
+    db.execute(
+        """UPDATE student_intelligence_reports
+           SET status = '已作废', voided_by = ?, voided_at = CURRENT_TIMESTAMP,
+               void_reason = ?
+           WHERE id = ? AND status != '已作废'""",
+        (actor_id, reason, report_id),
+    )
+    db.commit()

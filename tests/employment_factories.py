@@ -1,6 +1,6 @@
 from werkzeug.security import generate_password_hash
 
-from app import create_app, repositories
+from app import create_app, employment_repository, repositories
 from app.db import get_db
 from app.services import student_goals
 
@@ -152,3 +152,64 @@ def create_login_user(role, username):
 
 def login(client, username):
     return client.post("/login", data={"username": username, "password": "password123"})
+
+
+def complete_employment_student(app):
+    student_id, published_link_id, _ = configured_employment_student(app)
+    with app.app_context():
+        actor = repositories.get_user_by_username("workspace-admin")
+        link = repositories.get_job_skill_link(published_link_id)
+        target = repositories.list_student_job_targets(student_id)[0]
+        snapshot_id = employment_repository.create_market_snapshot(
+            {
+                "job_id": target["job_id"],
+                "region": "上海",
+                "period_start": "2026-06-01",
+                "period_end": "2026-06-30",
+                "observed_posting_count": 150,
+                "sample_size": 120,
+                "salary_min": 8000,
+                "salary_median": 12000,
+                "salary_max": 18000,
+                "currency": "CNY",
+                "salary_period": "月",
+                "source_id": link["source_id"],
+                "evidence_summary": "功能测试招聘摘要",
+                "limitation_note": "测试数据，仅用于功能验证，不代表真实市场",
+                "owner_user_id": actor["id"],
+                "reviewer_user_id": actor["id"],
+                "next_check_at": "2026-10-15",
+                "data_classification": "测试数据",
+            },
+            [{
+                "dimension_type": "热门技能",
+                "label": "已审核技能",
+                "value": 68,
+                "unit": "%",
+                "sample_size": 120,
+                "sort_order": 1,
+            }],
+            actor["id"],
+        )
+        employment_repository.submit_market_snapshot(snapshot_id)
+        employment_repository.review_market_snapshot(snapshot_id, "已发布")
+        repositories.upsert_student_skill_assessment(
+            student_id,
+            {
+                "skill_id": link["skill_id"],
+                "current_level": 2,
+                "evidence_note": "课程项目证据",
+            },
+            actor["id"],
+        )
+        employment_repository.upsert_analysis_draft(
+            student_id,
+            {
+                "suitability_summary": "专业基础与岗位相关",
+                "risk_summary": "缺少真实项目经历",
+                "action_recommendations": "优先完成 SQL 项目",
+                "limitation_note": "全部市场数据为功能测试数据",
+            },
+            actor["id"],
+        )
+        return student_id, link["skill_id"]

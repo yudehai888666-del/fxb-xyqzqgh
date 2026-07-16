@@ -520,3 +520,24 @@ CREATE TABLE IF NOT EXISTS student_employment_analysis_drafts (
     updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS student_intelligence_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    goal_type TEXT NOT NULL CHECK(goal_type IN ('升学', '就业')),
+    version INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT '待确认' CHECK(status IN ('待确认', '已确认', '已作废')),
+    data_classification TEXT NOT NULL CHECK(data_classification IN ('测试数据', '真实数据')),
+    snapshot_json TEXT NOT NULL,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    confirmed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    confirmed_at TEXT,
+    voided_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    voided_at TEXT,
+    void_reason TEXT NOT NULL DEFAULT '',
+    UNIQUE(student_id, goal_type, version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_intelligence_reports_student
+ON student_intelligence_reports(student_id, goal_type, version DESC);

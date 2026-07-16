@@ -1,5 +1,8 @@
 <section class="panel">
   <div class="panel-header"><div><h2>报告版本</h2><p class="muted">当前仅显示生成条件；版本冻结在下一阶段开放。</p></div></div>
-  {% if workspace.readiness.ready %}<div class="notice">已具备生成就业情报报告的基础条件。</div>{% else %}<div class="form-error">暂不能生成报告。</div><ul>{% for item in workspace.readiness.blocking %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+  <p class="status-chip">测试数据，仅用于功能验证</p>
+  {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+  {% if workspace.readiness.ready %}<div class="notice">已具备生成就业情报报告的基础条件。</div>{% if current_user and current_user.role in ('admin','teacher') %}<form method="post" action="{{ url_for('employment.generate_report', student_id=workspace.student.id) }}"><button class="button" type="submit">生成报告版本</button></form>{% endif %}{% else %}<div class="form-error">暂不能生成报告。</div><ul>{% for item in workspace.readiness.blocking %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
   {% if workspace.readiness.warnings %}<h3>提示</h3><ul>{% for item in workspace.readiness.warnings %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+  {% if reports %}<div class="table-wrap"><table><thead><tr><th>版本</th><th>状态</th><th>分类</th><th>创建人</th><th>时间</th></tr></thead><tbody>{% for report in reports %}<tr><td><a href="{{ url_for('employment.report_detail', student_id=workspace.student.id, report_id=report.id) }}">V{{ report.version }}</a></td><td>{{ report.status }}</td><td>{{ report.data_classification }}</td><td>{{ report.creator_name or '系统' }}</td><td>{{ report.created_at }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="empty">尚未生成报告版本。</p>{% endif %}
 </section>
