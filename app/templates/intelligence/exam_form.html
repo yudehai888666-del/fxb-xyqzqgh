@@ -16,6 +16,7 @@
     {% for field, label in [('collector_user_id','信息采集人'),('reviewer_user_id','业务审核人 *'),('execution_owner_user_id','学生执行负责人')] %}
     <label><span>{{ label }}</span><select name="{{ field }}"><option value="">未指定</option>{% for user in users if user['is_active'] %}<option value="{{ user['id'] }}" {% if exam and exam[field] == user['id'] %}selected{% endif %}>{{ user['display_name'] }}（{{ {'admin':'管理员','teacher':'负责老师','collaborator':'协作老师'}[user['role']] }}）</option>{% endfor %}</select></label>{% endfor %}
     <label class="span-2"><span>信息摘要与提醒</span><textarea name="summary" rows="6" placeholder="报名条件、材料、费用、考试变化及学生需要采取的动作">{{ exam['summary'] if exam else '' }}</textarea></label>
+    <label class="span-2"><span>限制说明 *</span><textarea name="limitation_note" rows="3" placeholder="说明测试信息适用范围、核验限制和不确定性">{{ exam['limitation_note'] if exam else '' }}</textarea></label>
     <label class="span-2"><span>本次变更说明 *</span><input name="change_summary" required value="{{ '首次录入' if not exam else '' }}" placeholder="如：报名截止日期从 9 月 15 日调整到 9 月 18 日"></label>
     <div class="form-actions span-2"><button class="button" type="submit">{{ '保存为新版本' if exam else '保存草稿' }}</button></div>
   </form></section>

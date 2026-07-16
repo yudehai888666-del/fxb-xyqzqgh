@@ -459,10 +459,19 @@ def test_student_matching_calculates_weighted_skill_gap_and_published_trends(app
         )
         industry_id = repositories.create_industry({"name": "数字经济"})
         repositories.update_industry_status(industry_id, "已发布")
+        source_id = repositories.create_intelligence_source(
+            {"name": "公开趋势来源", "url": "https://example.test/trends"},
+            actor_id,
+        )
         trend_id = repositories.create_industry_trend(
             {
                 "industry_id": industry_id, "title": "数据治理岗位增长",
-                "affected_jobs": "数据分析师", "evidence_summary": "公开数据证据",
+                "affected_jobs": "数据分析师",
+                "evidence_summary": "公开数据证据",
+                "limitation_note": "测试趋势，不代表真实市场",
+                "source_id": source_id,
+                "reviewer_user_id": actor_id,
+                "next_check_at": "2099-12-31",
             }
         )
         repositories.update_industry_trend_status(trend_id, "已发布")
@@ -514,15 +523,25 @@ def test_admin_can_set_target_and_skill_then_view_visual_report(tmp_path):
         )
 
     login(client, "admin")
-    assert client.post(
+    legacy_target = client.post(
         f"/students/{student_id}/intelligence-report/targets",
         data={"job_id": job_id, "priority": 1, "target_note": "第一方向"},
-    ).status_code == 302
+    )
+    assert legacy_target.status_code == 307
     assert client.post(
+        f"/students/{student_id}/employment/targets",
+        data={"job_id": job_id, "priority": 1, "target_note": "第一方向"},
+    ).status_code == 302
+    legacy_skill = client.post(
         f"/students/{student_id}/intelligence-report/skills",
         data={"skill_id": skill_id, "current_level": 1, "evidence_note": "访谈作业"},
+    )
+    assert legacy_skill.status_code == 307
+    assert client.post(
+        f"/students/{student_id}/employment/skills",
+        data={"skill_id": skill_id, "current_level": 1, "evidence_note": "访谈作业"},
     ).status_code == 302
-    page = client.get(f"/students/{student_id}/employment")
+    page = client.get(f"/students/{student_id}/employment?tab=skills")
     text = page.get_data(as_text=True)
     assert page.status_code == 200
     assert "目标与职业情报" in text
@@ -544,7 +563,8 @@ def test_published_exam_is_assigned_inside_student_planning_workflow(tmp_path):
         )
         exam_id = repositories.create_exam_information(
             {"exam_name": "大学英语四级", "official_url": "https://example.test/cet",
-             "reviewer_user_id": admin_id, "next_check_at": "2026-08-01"}, admin_id
+             "reviewer_user_id": admin_id, "next_check_at": "2026-08-01",
+             "limitation_note": "测试考试，不代表真实考试安排"}, admin_id
         )
         repositories.update_exam_status(exam_id, "已发布")
     login(client, "admin")
@@ -554,8 +574,15 @@ def test_published_exam_is_assigned_inside_student_planning_workflow(tmp_path):
               "preparation_status": "准备中", "personal_deadline": "2026-09-01",
               "next_action": "完成报名", "owner_user_id": admin_id},
     )
+    assert response.status_code == 307
+    response = client.post(
+        f"/students/{student_id}/employment/exams",
+        data={"exam_id": exam_id, "priority": 1, "purpose": "满足毕业要求",
+              "preparation_status": "准备中", "personal_deadline": "2026-09-01",
+              "next_action": "完成报名", "owner_user_id": admin_id},
+    )
     assert response.status_code == 302
     page = client.get(f"/students/{student_id}/employment").get_data(as_text=True)
-    assert "这名学生需要参加的考试" in page
+    page = client.get(f"/students/{student_id}/employment?tab=exams").get_data(as_text=True)
     assert "大学英语四级" in page
     assert "完成报名" in page

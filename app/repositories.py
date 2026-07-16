@@ -1231,6 +1231,7 @@ def list_knowledge_graph_links():
 EXAM_FIELDS = (
     "exam_name", "category", "region", "official_url", "source_name",
     "registration_start", "registration_end", "exam_date", "summary",
+    "limitation_note",
     "collector_user_id", "reviewer_user_id", "execution_owner_user_id",
     "next_check_at",
 )
@@ -1272,9 +1273,10 @@ def create_exam_information(data, created_by=None):
         INSERT INTO exam_information (
             exam_name, category, region, official_url, source_name,
             registration_start, registration_end, exam_date, summary,
+            limitation_note,
             collector_user_id, reviewer_user_id, execution_owner_user_id,
             next_check_at, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         tuple(values[field] for field in EXAM_FIELDS) + (created_by,),
     )
@@ -1540,9 +1542,9 @@ def create_industry_trend(data, created_by=None):
         INSERT INTO industry_trends (
             industry_id, title, trend_type, region, direction_summary,
             employment_impact, affected_jobs, affected_majors, evidence_summary,
-            source_id, source_url, published_at, next_check_at, owner_user_id,
-            reviewer_user_id, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            limitation_note, source_id, source_url, published_at, next_check_at,
+            owner_user_id, reviewer_user_id, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             int(data["industry_id"]), data["title"].strip(),
@@ -1553,6 +1555,7 @@ def create_industry_trend(data, created_by=None):
             data.get("affected_jobs", "").strip(),
             data.get("affected_majors", "").strip(),
             data.get("evidence_summary", "").strip(),
+            data.get("limitation_note", "").strip(),
             _optional_int(data.get("source_id")), data.get("source_url", "").strip(),
             data.get("published_at", "").strip(), data.get("next_check_at", "").strip(),
             _optional_int(data.get("owner_user_id")),
@@ -1769,6 +1772,10 @@ def list_published_industry_trends():
         JOIN industries i ON i.id = t.industry_id
         LEFT JOIN intelligence_sources s ON s.id = t.source_id
         WHERE t.status = '已发布' AND i.status = '已发布'
+          AND date(t.next_check_at) >= date('now')
+          AND t.evidence_summary != '' AND t.limitation_note != ''
+          AND t.reviewer_user_id IS NOT NULL
+          AND (t.source_id IS NOT NULL OR t.source_url != '')
         ORDER BY t.published_at DESC, t.updated_at DESC
         """
     ).fetchall()
@@ -1819,7 +1826,9 @@ def list_student_exam_plans(student_id):
         """
         SELECT p.*, e.exam_name, e.category, e.region, e.official_url,
                e.registration_start, e.registration_end, e.exam_date,
-               e.summary, e.status AS exam_status,
+               e.summary, e.source_name, e.next_check_at, e.limitation_note,
+               e.collector_user_id, e.reviewer_user_id, e.execution_owner_user_id,
+               e.status AS exam_status,
                owner.display_name AS owner_name
         FROM student_exam_plans p
         JOIN exam_information e ON e.id = p.exam_id

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ workspace.student.name }}就业目标与职业情报 - 学业规划工作台{% endblock %}
+{% block content %}
+  <section class="page-heading"><div><p class="eyebrow">就业路径</p><h1>目标与职业情报</h1><p class="muted">{{ workspace.student.name }} · {{ workspace.student.major }}</p></div></section>
+  <nav class="tab-nav" aria-label="就业情报工作区">
+    {% for key, label in [('targets','目标岗位'),('skills','技能差距'),('market','市场情报'),('exams','证书与考试'),('analysis','老师结论'),('reports','报告版本')] %}
+      <a href="{{ url_for('employment.workspace', student_id=workspace.student.id, tab=key) }}" {% if active_tab == key %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  {% include active_partial %}
+{% endblock %}

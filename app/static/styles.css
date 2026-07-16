@@ -1007,6 +1007,69 @@ textarea {
   text-align: right;
 }
 
+.tab-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+
+.tab-nav a {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tab-nav a[aria-current="page"] {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.gap-bar {
+  overflow: hidden;
+  width: 100%;
+  min-width: 110px;
+  height: 8px;
+  border-radius: 999px;
+  background: #edf0f4;
+}
+
+.gap-bar span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+}
+
+.bar-list {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.bar-list li {
+  display: grid;
+  grid-template-columns: 100px 1fr 70px;
+  gap: 10px;
+  align-items: center;
+}
+
+.info-list dt {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.info-list dd {
+  margin: 4px 0 0;
+}
+
 @media (max-width: 850px) {
   .workflow-card-grid,
   .decision-input-grid {

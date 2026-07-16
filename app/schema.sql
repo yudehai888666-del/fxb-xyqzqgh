@@ -329,6 +329,7 @@ CREATE TABLE IF NOT EXISTS exam_information (
     registration_end TEXT NOT NULL DEFAULT '',
     exam_date TEXT NOT NULL DEFAULT '',
     summary TEXT NOT NULL DEFAULT '',
+    limitation_note TEXT NOT NULL DEFAULT '',
     collector_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     reviewer_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     execution_owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -458,6 +459,7 @@ CREATE TABLE IF NOT EXISTS industry_trends (
     affected_jobs TEXT NOT NULL DEFAULT '',
     affected_majors TEXT NOT NULL DEFAULT '',
     evidence_summary TEXT NOT NULL DEFAULT '',
+    limitation_note TEXT NOT NULL DEFAULT '',
     source_id INTEGER REFERENCES intelligence_sources(id) ON DELETE SET NULL,
     source_url TEXT NOT NULL DEFAULT '',
     published_at TEXT NOT NULL DEFAULT '',
@@ -507,4 +509,14 @@ CREATE TABLE IF NOT EXISTS student_exam_plans (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(student_id, exam_id)
+);
+
+CREATE TABLE IF NOT EXISTS student_employment_analysis_drafts (
+    student_id INTEGER PRIMARY KEY REFERENCES students(id) ON DELETE CASCADE,
+    suitability_summary TEXT NOT NULL DEFAULT '',
+    risk_summary TEXT NOT NULL DEFAULT '',
+    action_recommendations TEXT NOT NULL DEFAULT '',
+    limitation_note TEXT NOT NULL DEFAULT '',
+    updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

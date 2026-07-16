@@ -78,6 +78,13 @@ def _run_lightweight_migrations(db):
     for column, definition in job_skill_columns.items():
         _add_column_if_missing(db, "job_skill_links", column, definition)
 
+    _add_column_if_missing(
+        db, "exam_information", "limitation_note", "TEXT NOT NULL DEFAULT ''"
+    )
+    _add_column_if_missing(
+        db, "industry_trends", "limitation_note", "TEXT NOT NULL DEFAULT ''"
+    )
+
     db.execute(
         """
         INSERT OR IGNORE INTO student_files (

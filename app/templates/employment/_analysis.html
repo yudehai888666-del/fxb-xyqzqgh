@@ -1,0 +1,6 @@
+<section class="panel">
+  <div class="panel-header"><div><h2>老师结论</h2><p class="muted">这里保存当前工作稿；冻结报告版本在下一步生成。</p></div></div>
+  {% set draft = workspace.analysis_draft %}
+  {% if draft %}<dl class="info-list"><dt>适合原因</dt><dd>{{ draft.suitability_summary }}</dd><dt>主要风险</dt><dd>{{ draft.risk_summary }}</dd><dt>行动建议</dt><dd>{{ draft.action_recommendations }}</dd><dt>限制说明</dt><dd>{{ draft.limitation_note }}</dd></dl>{% else %}<p class="empty">尚未填写老师结论。</p>{% endif %}
+  {% if current_user and current_user.role in ('admin','teacher') %}<form method="post" action="{{ url_for('employment.save_analysis', student_id=workspace.student.id) }}" class="stack-form"><label><span>适合原因</span><textarea name="suitability_summary" rows="3">{{ draft.suitability_summary if draft else '' }}</textarea></label><label><span>主要风险</span><textarea name="risk_summary" rows="3">{{ draft.risk_summary if draft else '' }}</textarea></label><label><span>行动建议</span><textarea name="action_recommendations" rows="3">{{ draft.action_recommendations if draft else '' }}</textarea></label><label><span>限制说明</span><textarea name="limitation_note" rows="3">{{ draft.limitation_note if draft else '' }}</textarea></label><button class="button" type="submit">保存老师结论</button></form>{% endif %}
+</section>

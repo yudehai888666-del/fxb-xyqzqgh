@@ -1,0 +1,5 @@
+<section class="panel">
+  <div class="panel-header"><div><h2>报告版本</h2><p class="muted">当前仅显示生成条件；版本冻结在下一阶段开放。</p></div></div>
+  {% if workspace.readiness.ready %}<div class="notice">已具备生成就业情报报告的基础条件。</div>{% else %}<div class="form-error">暂不能生成报告。</div><ul>{% for item in workspace.readiness.blocking %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+  {% if workspace.readiness.warnings %}<h3>提示</h3><ul>{% for item in workspace.readiness.warnings %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+</section>

@@ -249,3 +249,38 @@ def list_current_market_snapshots(job_id):
             ORDER BY ms.period_end DESC, ms.id DESC""",
         (job_id,),
     ).fetchall()
+
+
+def get_analysis_draft(student_id):
+    return get_db().execute(
+        "SELECT * FROM student_employment_analysis_drafts WHERE student_id = ?",
+        (student_id,),
+    ).fetchone()
+
+
+def upsert_analysis_draft(student_id, data, actor_id):
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO student_employment_analysis_drafts (
+            student_id, suitability_summary, risk_summary,
+            action_recommendations, limitation_note, updated_by
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(student_id) DO UPDATE SET
+            suitability_summary = excluded.suitability_summary,
+            risk_summary = excluded.risk_summary,
+            action_recommendations = excluded.action_recommendations,
+            limitation_note = excluded.limitation_note,
+            updated_by = excluded.updated_by,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            student_id,
+            data.get("suitability_summary", "").strip(),
+            data.get("risk_summary", "").strip(),
+            data.get("action_recommendations", "").strip(),
+            data.get("limitation_note", "").strip(),
+            actor_id,
+        ),
+    )
+    db.commit()
