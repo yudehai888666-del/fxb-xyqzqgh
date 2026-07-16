@@ -1051,6 +1051,11 @@ def _validate_job_skill_dates(last_verified_at, next_check_at):
         raise ValueError("下次复核日期不得早于最近核查日期")
 
 
+def _validate_job_skill_sample_size(sample_size):
+    if not isinstance(sample_size, int) or sample_size < 0:
+        raise ValueError("invalid sample size")
+
+
 def create_job_skill_link(data, created_by=None):
     confidence_level = data.get("confidence_level", "").strip()
     if confidence_level not in ("", "低", "中", "高"):
@@ -1168,6 +1173,7 @@ def _validate_job_skill_governance(link):
         raise ValueError(
             "提交前请补齐证据、来源、置信度、责任人、复核日期和限制说明"
         )
+    _validate_job_skill_sample_size(link["sample_size"])
     _validate_job_skill_dates(link["last_verified_at"], link["next_check_at"])
 
 
@@ -1733,8 +1739,12 @@ def list_job_skill_requirements(job_id):
               )
           )
           AND js.confidence_level IN ('低', '中', '高')
+          AND typeof(js.sample_size) = 'integer'
+          AND js.sample_size >= 0
           AND date(js.last_verified_at) = js.last_verified_at
           AND date(js.next_check_at) = js.next_check_at
+          AND substr(js.last_verified_at, 1, 4) BETWEEN '0001' AND '9999'
+          AND substr(js.next_check_at, 1, 4) BETWEEN '0001' AND '9999'
           AND date(js.next_check_at) >= date(js.last_verified_at)
           AND date(js.next_check_at) >= date('now')
           AND TRIM(

@@ -252,7 +252,10 @@ def test_submit_and_publish_revalidate_dates_after_external_changes(app):
         "UPDATE job_skill_links SET source_id = NULL, source_url = '' WHERE id = ?",
         "UPDATE job_skill_links SET confidence_level = '' WHERE id = ?",
         "UPDATE job_skill_links SET last_verified_at = 'not-a-date' WHERE id = ?",
+        "UPDATE job_skill_links SET last_verified_at = '0000-01-01' WHERE id = ?",
         "UPDATE job_skill_links SET next_check_at = '永不过期' WHERE id = ?",
+        "UPDATE job_skill_links SET sample_size = -1 WHERE id = ?",
+        "UPDATE job_skill_links SET sample_size = 'not-an-integer' WHERE id = ?",
         "UPDATE job_skill_links SET owner_user_id = NULL WHERE id = ?",
         "UPDATE job_skill_links SET reviewer_user_id = NULL WHERE id = ?",
         "UPDATE job_skill_links SET limitation_note = '' WHERE id = ?",
@@ -270,7 +273,9 @@ def test_final_requirement_query_revalidates_governance(app, corruption_sql):
             actor_id, source_id, job_id, skill_id
         )
         assert len(repositories.list_job_skill_requirements(job_id)) == 1
+        get_db().execute("PRAGMA ignore_check_constraints = ON")
         get_db().execute(corruption_sql, (link_id,))
+        get_db().execute("PRAGMA ignore_check_constraints = OFF")
         get_db().commit()
         assert repositories.list_job_skill_requirements(job_id) == []
 
@@ -306,6 +311,46 @@ def test_final_requirement_query_rejects_whitespace_only_text(
         )
         get_db().commit()
         assert repositories.list_job_skill_requirements(job_id) == []
+
+
+@pytest.mark.parametrize("sql_value", ("-1", "'not-an-integer'"))
+def test_submit_and_publish_revalidate_sample_size_after_external_changes(
+    app, sql_value
+):
+    with app.app_context():
+        suffix = "negative" if sql_value == "-1" else "text"
+        actor_id = create_user(username=f"sample-lifecycle-{suffix}")
+        source_id = create_source(actor_id)
+        job_id, skill_id = create_published_job_and_skill(
+            f"测试样本复验岗位-{suffix}", f"测试样本复验技能-{suffix}"
+        )
+        link_id = repositories.create_job_skill_link(
+            governed_link_data(actor_id, source_id, job_id, skill_id), actor_id
+        )
+        get_db().execute("PRAGMA ignore_check_constraints = ON")
+        get_db().execute(
+            f"UPDATE job_skill_links SET sample_size = {sql_value} WHERE id = ?",
+            (link_id,),
+        )
+        get_db().execute("PRAGMA ignore_check_constraints = OFF")
+        get_db().commit()
+        with pytest.raises(ValueError, match="sample"):
+            repositories.submit_job_skill_link(link_id)
+
+        get_db().execute(
+            "UPDATE job_skill_links SET sample_size = 0 WHERE id = ?", (link_id,)
+        )
+        get_db().commit()
+        repositories.submit_job_skill_link(link_id)
+        get_db().execute("PRAGMA ignore_check_constraints = ON")
+        get_db().execute(
+            f"UPDATE job_skill_links SET sample_size = {sql_value} WHERE id = ?",
+            (link_id,),
+        )
+        get_db().execute("PRAGMA ignore_check_constraints = OFF")
+        get_db().commit()
+        with pytest.raises(ValueError, match="sample"):
+            repositories.review_job_skill_link(link_id, "已发布")
 
 
 @pytest.mark.parametrize(
