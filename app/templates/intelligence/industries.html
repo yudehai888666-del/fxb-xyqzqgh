@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}产业情报 - 学业规划工作台{% endblock %}
+{% block content %}
+  <section class="page-heading"><div><p class="eyebrow">规划依据</p><h1>产业趋势与就业情报</h1></div></section>
+  {% if message %}<div class="notice">{{ message }}</div>{% endif %}
+  {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+
+  <section class="summary-grid">
+    <article class="metric"><span>产业条目</span><strong>{{ industries|length }}</strong></article>
+    <article class="metric"><span>趋势判断</span><strong>{{ trends|length }}</strong></article>
+    <article class="metric"><span>受控数据源</span><strong>{{ sources|length }}</strong></article>
+    <article class="metric"><span>检测到变化</span><strong>{{ sources|selectattr('last_change_status', 'equalto', '有变化')|list|length }}</strong></article>
+  </section>
+
+  <section class="panel"><div class="panel-header"><div><h2>产业趋势清单</h2><p class="muted">趋势判断必须有来源、证据摘要、责任人和复核日期，审核通过后才能进入学生报告。</p></div></div>
+  {% if trends %}<div class="table-wrap"><table><thead><tr><th>产业 / 方向</th><th>就业影响</th><th>影响对象</th><th>来源与责任</th><th>状态</th><th>操作</th></tr></thead><tbody>
+    {% for trend in trends %}<tr>
+      <td><strong>{{ trend['industry_name'] }}</strong><br>{{ trend['title'] }}<br><span class="muted">{{ trend['trend_type'] }} · {{ trend['region'] }}</span></td>
+      <td>{{ trend['employment_impact'] or '待补充' }}</td>
+      <td>岗位：{{ trend['affected_jobs'] or '待补充' }}<br>专业：{{ trend['affected_majors'] or '待补充' }}</td>
+      <td>{% if trend['source_id'] %}<a href="{{ url_for('intelligence.source_detail', source_id=trend['source_id']) }}">{{ trend['source_name'] }}</a>{% elif trend['source_url'] %}<a href="{{ trend['source_url'] }}" target="_blank" rel="noopener">外部来源</a>{% else %}待补来源{% endif %}<br><span class="muted">负责人：{{ trend['owner_name'] or '未指定' }}；审核：{{ trend['reviewer_name'] or '未指定' }}；复核：{{ trend['next_check_at'] or '未设置' }}</span></td>
+      <td><span class="status-chip">{{ trend['status'] }}</span></td>
+      <td><div class="compact-actions">{% if current_user and current_user['role'] in ('admin','teacher') and trend['status'] in ('草稿','已退回') %}<form method="post" action="{{ url_for('intelligence.submit_industry_trend', trend_id=trend['id']) }}"><button class="button secondary" type="submit">提交审核</button></form>{% endif %}{% if current_user and current_user['role'] == 'admin' %}<form method="post" action="{{ url_for('intelligence.review_industry_trend', trend_id=trend['id']) }}" class="inline-form"><select name="status"><option>已发布</option><option>已退回</option><option>已过期</option></select><button class="button secondary" type="submit">确认</button></form>{% endif %}</div></td>
+    </tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="empty">暂无产业趋势判断。</p>{% endif %}</section>
+
+  <section class="panel"><div class="panel-header"><div><h2>受控数据源</h2><p class="muted">只采集公开文本；每次采集都会保存摘要哈希和变化状态，不收集求职者个人信息。</p></div></div>
+  {% if sources %}<div class="table-wrap"><table><thead><tr><th>数据源</th><th>类型 / 频率</th><th>责任人</th><th>最后采集</th><th>变化状态</th><th>快照</th></tr></thead><tbody>{% for source in sources %}<tr>
+    <td><a href="{{ url_for('intelligence.source_detail', source_id=source['id']) }}">{{ source['name'] }}</a><br><span class="muted break-url">{{ source['url'] }}</span></td>
+    <td>{{ source['source_kind'] }}<br>{{ source['update_frequency'] }}</td><td>采集：{{ source['owner_name'] or '未指定' }}<br>审核：{{ source['reviewer_name'] or '未指定' }}</td><td>{{ source['last_fetch_at'] or '尚未采集' }}</td><td><span class="status-chip">{{ source['last_change_status'] }}</span></td><td>{{ source['snapshot_count'] }}</td>
+  </tr>{% endfor %}</tbody></table></div>{% else %}<p class="empty">暂无受控数据源。</p>{% endif %}</section>
+
+  {% if current_user and current_user['role'] in ('admin','teacher') %}
+  <section class="detail-grid">
+    <article class="panel"><h2>新增产业</h2><form method="post" action="{{ url_for('intelligence.create_industry') }}" class="stack-form">
+      <label><span>产业名称 *</span><input name="name" required placeholder="如：人工智能产业"></label><label><span>产业分类</span><input name="category" placeholder="战略性新兴产业"></label><label><span>地域范围</span><input name="scope" value="全国"></label><label><span>产业说明</span><textarea name="description" rows="3"></textarea></label>
+      <label><span>负责人</span><select name="owner_user_id"><option value="">未指定</option>{% for user in users if user['is_active'] %}<option value="{{ user['id'] }}">{{ user['display_name'] }}</option>{% endfor %}</select></label><label><span>审核人</span><select name="reviewer_user_id"><option value="">未指定</option>{% for user in users if user['is_active'] %}<option value="{{ user['id'] }}">{{ user['display_name'] }}</option>{% endfor %}</select></label><button class="button" type="submit">保存产业草稿</button>
+    </form></article>
+    <article class="panel"><h2>新增趋势判断</h2><form method="post" action="{{ url_for('intelligence.create_industry_trend') }}" class="stack-form">
+      <label><span>产业 *</span><select name="industry_id" required><option value="">请选择</option>{% for item in industries %}<option value="{{ item['id'] }}">{{ item['name'] }}</option>{% endfor %}</select></label><label><span>趋势标题 *</span><input name="title" required></label><label><span>趋势类型</span><select name="trend_type"><option>产业方向</option><option>就业变化</option><option>技术变化</option><option>政策变化</option><option>区域机会</option></select></label><label><span>地区</span><input name="region" value="全国"></label>
+      <label><span>发展方向</span><textarea name="direction_summary" rows="3"></textarea></label><label><span>就业影响</span><textarea name="employment_impact" rows="3" placeholder="岗位数量、能力要求或招聘结构的变化"></textarea></label><label><span>受影响岗位</span><input name="affected_jobs" placeholder="使用顿号分隔"></label><label><span>受影响专业</span><input name="affected_majors" placeholder="使用顿号分隔"></label><label><span>证据摘要 *</span><textarea name="evidence_summary" rows="3"></textarea></label>
+      <label><span>受控数据源</span><select name="source_id"><option value="">不关联</option>{% for source in sources %}<option value="{{ source['id'] }}">{{ source['name'] }}</option>{% endfor %}</select></label><label><span>其他来源链接</span><input name="source_url" type="url"></label><label><span>原文发布日期</span><input name="published_at" type="date"></label><label><span>下次核查 *</span><input name="next_check_at" type="date"></label><label><span>负责人</span><select name="owner_user_id"><option value="">未指定</option>{% for user in users if user['is_active'] %}<option value="{{ user['id'] }}">{{ user['display_name'] }}</option>{% endfor %}</select></label><label><span>审核人 *</span><select name="reviewer_user_id"><option value="">未指定</option>{% for user in users if user['is_active'] %}<option value="{{ user['id'] }}">{{ user['display_name'] }}</option>{% endfor %}</select></label><button class="button" type="submit">保存趋势草稿</button>
+    </form></article>
+  </section>
+  {% endif %}
+
+  {% if current_user and current_user['role'] == 'admin' %}<section class="panel"><h2>配置公开数据源</h2><p class="field-note">推荐政府、公共就业服务、统计部门、行业协会及明确允许自动访问的公开研究页面。禁止登录后页面、验证码、付费墙及个人简历数据。</p><form method="post" action="{{ url_for('intelligence.create_source') }}" class="form-grid">
+    <label><span>数据源名称 *</span><input name="name" required></label><label class="span-2"><span>公开网页链接 *</span><input name="url" type="url" required placeholder="https://..."></label><label><span>来源类型</span><select name="source_kind"><option>政府与公共机构</option><option>统计数据</option><option>公共就业服务</option><option>行业协会</option><option>公开研究报告</option></select></label><label><span>更新频率</span><select name="update_frequency"><option>每周</option><option selected>每月</option><option>每季度</option><option>每年</option></select></label><input type="hidden" name="collection_mode" value="公开网页"><label><span>采集负责人</span><select name="owner_user_id"><option value="">未指定</option>{% for user in users if user['is_active'] %}<option value="{{ user['id'] }}">{{ user['display_name'] }}</option>{% endfor %}</select></label><label><span>审核人</span><select name="reviewer_user_id"><option value="">未指定</option>{% for user in users if user['is_active'] %}<option value="{{ user['id'] }}">{{ user['display_name'] }}</option>{% endfor %}</select></label><label class="span-2"><span>合规备注</span><textarea name="compliance_note" rows="3" placeholder="记录网站使用条款、允许范围或人工确认情况"></textarea></label><div class="form-actions span-2"><button class="button" type="submit">保存受控数据源</button></div>
+  </form></section>{% endif %}
+
+  {% if current_user and current_user['role'] == 'admin' and industries %}<section class="panel"><h2>产业审核</h2><div class="table-wrap"><table><thead><tr><th>产业</th><th>负责人</th><th>审核人</th><th>状态</th><th>操作</th></tr></thead><tbody>{% for industry in industries %}<tr><td>{{ industry['name'] }}</td><td>{{ industry['owner_name'] or '未指定' }}</td><td>{{ industry['reviewer_name'] or '未指定' }}</td><td>{{ industry['status'] }}</td><td><form method="post" action="{{ url_for('intelligence.review_industry', industry_id=industry['id']) }}" class="inline-form"><select name="status"><option>待审核</option><option>已发布</option><option>已退回</option><option>草稿</option></select><button class="button secondary" type="submit">更新</button></form></td></tr>{% endfor %}</tbody></table></div></section>{% endif %}
+{% endblock %}

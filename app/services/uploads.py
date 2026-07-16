@@ -1,3 +1,6 @@
+import hashlib
+import mimetypes
+from pathlib import Path
 from uuid import uuid4
 
 from flask import current_app
@@ -35,3 +38,17 @@ def save_upload(student_id, file_storage):
     stored_name = f"student-{student_id}-{uuid4().hex}-{safe_original}"
     file_storage.save(current_app.config["UPLOAD_DIR"] / stored_name)
     return stored_name
+
+
+def inspect_stored_file(path, original_filename=""):
+    file_path = Path(path)
+    digest = hashlib.sha256()
+    with file_path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return {
+        "size_bytes": file_path.stat().st_size,
+        "sha256": digest.hexdigest(),
+        "mime_type": mimetypes.guess_type(original_filename or file_path.name)[0]
+        or "application/octet-stream",
+    }

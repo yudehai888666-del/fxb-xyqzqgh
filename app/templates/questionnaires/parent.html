@@ -13,21 +13,21 @@
   <!-- 顶部标题 -->
   <div class="q-header">
     <div class="q-header-left">
-      <div class="q-breadcrumb">
+      {% if not public_invite %}<div class="q-breadcrumb">
         <a href="{{ url_for('students.detail', student_id=student.id) }}">{{ student.name }}</a>
         <span>›</span>
         <span>家长问卷</span>
-      </div>
+      </div>{% endif %}
       <h1 class="q-title">
         <span class="q-title-icon">👨‍👩‍👧</span>
         主要家长问卷
       </h1>
-      <p class="q-subtitle">记录主要家长的基本信息、家庭资源、目标优先级与当前关注点，帮助规划老师更精准地制定学业方案。</p>
+      <p class="q-subtitle">请填写您对 {{ student.name }} 的观察、家庭资源、目标期待与当前担忧。</p>
     </div>
-    <a class="q-btn-back" href="{{ url_for('students.detail', student_id=student.id) }}">
+    {% if not public_invite %}<a class="q-btn-back" href="{{ url_for('students.detail', student_id=student.id) }}">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
       返回档案
-    </a>
+    </a>{% endif %}
   </div>
 
   <!-- 进度提示 -->
@@ -67,7 +67,7 @@
             <span class="q-required">*</span>
           </label>
           <input class="q-input" id="relationship" name="relationship"
-                 value="{{ relationship }}" placeholder="例如：父亲、母亲、其他监护人" required>
+                 value="{{ relationship }}" placeholder="请输入与学生的关系，如父亲、母亲、其他监护人" required>
         </div>
         <div class="q-field">
           <label class="q-label" for="parent_phone">家长联系电话</label>
@@ -100,7 +100,7 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
             家庭资源
           </div>
-          <p class="q-helper">可填写家庭可投入的时间、预算范围、行业人脉、是否支持考研/留学/就业专项投入等。</p>
+          <p class="q-helper">可填写家庭可投入的时间、预算、行业资源、人脉资源，以及是否支持考研/留学/就业专项投入等。</p>
           <textarea class="q-textarea" name="family_resources" rows="6"
             placeholder="例如：父亲在金融行业工作，有一定行业资源；家庭预算充足，支持考研全程投入；母亲可全程陪伴……">{{ questionnaire["family_resources"] if questionnaire else "" }}</textarea>
         </div>
@@ -110,7 +110,7 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             投入意愿
           </div>
-          <p class="q-helper">可说明家庭愿意投入的支持方式，例如时间陪伴、学科辅导、竞赛科研、语言培训或后续专项服务。</p>
+          <p class="q-helper">可说明家庭愿意投入的支持方式，例如基础规划、学科辅导、竞赛科研、语言培训、时间陪伴或后续专项服务。</p>
           <textarea class="q-textarea" name="investment_willingness" rows="6"
             placeholder="例如：愿意投入基础规划+学科辅导；希望参加科研训练；预算范围大约……">{{ questionnaire["investment_willingness"] if questionnaire else "" }}</textarea>
         </div>
@@ -145,7 +145,7 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             家长对孩子的观察
           </div>
-          <p class="q-helper">可记录孩子的学习习惯、自律情况、沟通状态、抗压能力和专业满意度等，您的观察非常重要。</p>
+          <p class="q-helper">可记录孩子的学习习惯、自律情况、沟通状态、抗压能力、专业满意度等，您的观察非常重要。</p>
           <textarea class="q-textarea" name="parent_observations" rows="6"
             placeholder="例如：孩子自律性较强，但容易焦虑；对现在的专业不太感兴趣；和老师沟通积极……">{{ questionnaire["parent_observations"] if questionnaire else "" }}</textarea>
         </div>
@@ -164,10 +164,10 @@
 
     <!-- 提交栏 -->
     <div class="q-actions">
-      <a class="q-btn-cancel" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>
+      {% if not public_invite %}<a class="q-btn-cancel" href="{{ url_for('students.detail', student_id=student.id) }}">取消</a>{% endif %}
       <button class="q-btn-submit" type="submit">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        保存家长问卷
+        {% if public_invite %}确认并提交给老师{% else %}保存家长问卷{% endif %}
       </button>
     </div>
 

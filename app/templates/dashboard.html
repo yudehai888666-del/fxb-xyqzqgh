@@ -5,8 +5,9 @@
 {% block content %}
   <section class="page-heading">
     <div>
-      <p class="eyebrow">首页工作台</p>
-      <h1>学业规划工作台</h1>
+      <p class="eyebrow">今日工作</p>
+      <h1>继续学生规划</h1>
+      <p class="muted">先选择学生，再沿规划流程推进；资料库只在需要补充依据时使用。</p>
     </div>
     <a class="button" href="{{ url_for('students.new') }}">新增学生</a>
   </section>
@@ -30,8 +31,9 @@
             <tr>
               <th>姓名</th>
               <th>学校</th>
-              <th>专业方向</th>
-              <th>负责老师</th>
+              <th>当前环节</th>
+              <th>进度</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -39,8 +41,9 @@
               <tr>
                 <td><a href="{{ url_for('students.detail', student_id=student.id) }}">{{ student.name }}</a></td>
                 <td>{{ student.school }}</td>
-                <td>{{ student.major }}</td>
-                <td>{{ student.responsible_teacher }}</td>
+                <td>第{{ workflows[student.id].next_stage.number }}步 · {{ workflows[student.id].next_stage.title }}</td>
+                <td>{{ workflows[student.id].progress }}%</td>
+                <td><a href="{{ url_for('students.detail', student_id=student.id) }}">继续规划 →</a></td>
               </tr>
             {% endfor %}
           </tbody>

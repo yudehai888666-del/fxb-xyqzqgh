@@ -5,19 +5,48 @@
 {% block content %}
   <section class="page-heading">
     <div>
-      <p class="eyebrow">初步规划</p>
+      <p class="eyebrow">第 4 步 · 规划版本</p>
       <h1>{{ document["title"] }}</h1>
     </div>
-    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回档案</a>
+    <a class="button secondary" href="{{ url_for('planning.generate', student_id=student.id) }}">返回规划书列表</a>
+    <a class="button" href="{{ url_for('planning.edit', student_id=student.id, document_id=document['id']) }}">创建新版本</a>
   </section>
+
+  <section class="panel"><div class="panel-header"><h2>版本确认与导出</h2></div><div class="action-list">
+    {% if document["status"] == "草稿" %}<form method="post" action="{{ url_for('planning.confirm', student_id=student.id, document_id=document['id']) }}"><button class="button" type="submit">确认当前版本</button></form>{% endif %}
+    <form method="post" action="{{ url_for('planning.export', student_id=student.id, document_id=document['id'], file_format='docx') }}"><button class="button secondary" type="submit">导出 Word</button></form>
+    <form method="post" action="{{ url_for('planning.export', student_id=student.id, document_id=document['id'], file_format='pdf') }}"><button class="button secondary" type="submit">导出 PDF</button></form>
+  </div><p class="muted">编辑会创建新版本，不覆盖当前内容；导出文件自动进入文件档案中心。</p></section>
 
   <section class="panel">
     <div class="panel-header">
       <h2>规划预览</h2>
-      <span class="badge badge-muted">{{ document["status"] }}</span>
+      <div class="action-list" style="margin:0;align-items:center;">
+        <span class="badge badge-muted">V{{ document["version"] }} · {{ document["status"] }}</span>
+        <form method="post" action="{{ url_for('planning.update_visibility', student_id=student.id, document_id=document['id']) }}" class="visibility-form">
+          <label for="planning-visibility">可见范围</label>
+          <select id="planning-visibility" name="visibility" onchange="this.form.submit()" aria-label="规划文档可见范围">
+            {% for option in ("老师内部", "学生可见", "家长可见", "学生与家长可见") %}
+              <option value="{{ option }}" {% if document["visibility"] == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+    </div>
+    <div class="visibility-notice">
+      <strong>当前仅作为发布标记</strong>
+      <span>学生端和家长端门户尚未开放，修改此选项不会立即将规划书发送或公开给学生/家长。</span>
     </div>
     <pre class="markdown-preview">{{ document["content_markdown"] }}</pre>
   </section>
+  <style>
+    .visibility-form { display:flex; align-items:center; gap:8px; }
+    .visibility-form label { color:var(--muted); font-size:13px; font-weight:700; white-space:nowrap; }
+    .visibility-form select { min-height:36px; padding:6px 9px; border:1px solid var(--line); border-radius:7px; background:#fff; font:inherit; }
+    .visibility-notice { display:flex; gap:8px; margin:0 0 18px; padding:10px 12px; border:1px solid #bcd3f6; border-radius:8px; background:#f5f9ff; color:#52637a; font-size:12px; line-height:1.55; }
+    .visibility-notice strong { color:#315c91; white-space:nowrap; }
+    @media (max-width:700px) { .visibility-notice { flex-direction:column; } .visibility-form { align-items:flex-start; flex-direction:column; } }
+  </style>
 
   <section class="panel">
     <div class="panel-header">

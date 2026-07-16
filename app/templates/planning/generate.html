@@ -5,10 +5,11 @@
 {% block content %}
   <section class="page-heading">
     <div>
-      <p class="eyebrow">初步规划</p>
-      <h1>生成初步规划：{{ student.name }}</h1>
+      <p class="eyebrow">第 4 步 · 形成规划</p>
+      <h1>生成 {{ student.name }}的规划书</h1>
+      <p class="muted">规划书应承接前面的信息、诊断、岗位技能差距和考试安排。</p>
     </div>
-    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回档案</a>
+    <a class="button secondary" href="{{ url_for('students.detail', student_id=student.id) }}">返回流程总览</a>
   </section>
 
   {% if error %}
@@ -49,5 +50,10 @@
         <button class="button disabled" type="submit" disabled>生成初步规划</button>
       {% endif %}
     </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><div><h2>本学生的规划版本</h2><p class="muted">从最早草稿到已确认版本都保留在这里。</p></div></div>
+    {% if documents %}<div class="document-strip">{% for document in documents %}<a href="{{ url_for('planning.detail', student_id=student.id, document_id=document['id']) }}"><strong>V{{ document['version'] }} · {{ document['status'] }}</strong><span>{{ document['title'] }}</span><small>{{ document['visibility'] }} · {{ document['updated_at'][:16] }}</small></a>{% endfor %}</div>{% else %}<p class="empty">还没有规划版本。完成前面三个阶段后再生成第一版。</p>{% endif %}
   </section>
 {% endblock %}

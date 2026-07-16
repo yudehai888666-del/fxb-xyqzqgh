@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑' if exam else '录入' }}考试信息 - 学业规划工作台{% endblock %}
+{% block content %}
+  <section class="page-heading"><div><p class="eyebrow">考试信息治理</p><h1>{{ '编辑考试信息' if exam else '录入考试信息' }}</h1></div><a class="button secondary" href="{{ url_for('intelligence.exam_detail', exam_id=exam['id']) if exam else url_for('intelligence.exams_index') }}">返回</a></section>
+  <section class="form-panel">{% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+  <form method="post" class="form-grid">
+    <label><span>考试名称 *</span><input name="exam_name" required value="{{ exam['exam_name'] if exam else '' }}" placeholder="如：全国大学英语四级考试"></label>
+    <label><span>类别</span><input name="category" value="{{ exam['category'] if exam else '' }}" placeholder="语言 / 升学 / 职业资格"></label>
+    <label><span>地区</span><input name="region" value="{{ exam['region'] if exam else '全国' }}"></label>
+    <label><span>官方来源名称</span><input name="source_name" value="{{ exam['source_name'] if exam else '' }}" placeholder="主管部门或考试官网"></label>
+    <label class="span-2"><span>官方链接 *</span><input name="official_url" type="url" value="{{ exam['official_url'] if exam else '' }}" placeholder="https://..."></label>
+    <label><span>报名开始</span><input name="registration_start" type="date" value="{{ exam['registration_start'] if exam else '' }}"></label>
+    <label><span>报名截止</span><input name="registration_end" type="date" value="{{ exam['registration_end'] if exam else '' }}"></label>
+    <label><span>考试日期</span><input name="exam_date" type="date" value="{{ exam['exam_date'] if exam else '' }}"></label>
+    <label><span>下次核查时间 *</span><input name="next_check_at" type="date" value="{{ exam['next_check_at'] if exam else '' }}"></label>
+    {% for field, label in [('collector_user_id','信息采集人'),('reviewer_user_id','业务审核人 *'),('execution_owner_user_id','学生执行负责人')] %}
+    <label><span>{{ label }}</span><select name="{{ field }}"><option value="">未指定</option>{% for user in users if user['is_active'] %}<option value="{{ user['id'] }}" {% if exam and exam[field] == user['id'] %}selected{% endif %}>{{ user['display_name'] }}（{{ {'admin':'管理员','teacher':'负责老师','collaborator':'协作老师'}[user['role']] }}）</option>{% endfor %}</select></label>{% endfor %}
+    <label class="span-2"><span>信息摘要与提醒</span><textarea name="summary" rows="6" placeholder="报名条件、材料、费用、考试变化及学生需要采取的动作">{{ exam['summary'] if exam else '' }}</textarea></label>
+    <label class="span-2"><span>本次变更说明 *</span><input name="change_summary" required value="{{ '首次录入' if not exam else '' }}" placeholder="如：报名截止日期从 9 月 15 日调整到 9 月 18 日"></label>
+    <div class="form-actions span-2"><button class="button" type="submit">{{ '保存为新版本' if exam else '保存草稿' }}</button></div>
+  </form></section>
+{% endblock %}

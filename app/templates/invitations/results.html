@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ questionnaire_title }}结果：{{ student.name }} - 学业规划工作台{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div><p class="eyebrow">原始提交记录</p><h1>{{ student.name }}的{{ questionnaire_title }}结果</h1><p class="muted">以下为扫码填写时的原始内容，老师后续编辑不会覆盖这些记录。</p></div>
+  <div class="action-list" style="margin:0">
+    <a class="button secondary" href="{{ url_for('invitations.manage', student_id=student.id) }}">返回邀请中心</a>
+    <a class="button" href="{{ url_for('questionnaires.student_questionnaire' if questionnaire_type == 'student' else 'questionnaires.parent_questionnaire', student_id=student.id) }}">编辑当前问卷</a>
+  </div>
+</section>
+{% if submissions %}
+  {% for submission in submissions %}
+  <section class="result-card">
+    <div class="result-head"><strong>提交记录 #{{ submission.record["id"] }}{% if submission.legacy %} · 早期记录{% endif %}</strong><span>{{ submission.record["submitted_at"][:16] }}</span></div>
+    <dl class="result-list">
+      {% for field, label in labels %}
+      <div><dt>{{ label }}</dt><dd>{{ submission.answers.get(field) or "未填写" }}</dd></div>
+      {% endfor %}
+    </dl>
+  </section>
+  {% endfor %}
+{% else %}
+  <section class="panel"><p class="empty">暂无扫码提交记录。</p></section>
+{% endif %}
+<style>.result-card{margin-bottom:18px;padding:0;border:1px solid var(--line);border-radius:13px;background:#fff;overflow:hidden}.result-head{display:flex;justify-content:space-between;padding:15px 19px;border-bottom:1px solid var(--line);background:#f8fafc}.result-head span{color:var(--muted);font-size:13px}.result-list{margin:0}.result-list>div{display:grid;grid-template-columns:170px 1fr;gap:18px;padding:14px 19px;border-bottom:1px solid #edf0f4}.result-list>div:last-child{border-bottom:0}.result-list dt{color:var(--muted);font-size:13px;font-weight:700}.result-list dd{margin:0;white-space:pre-wrap;line-height:1.65}@media(max-width:650px){.result-list>div{grid-template-columns:1fr;gap:4px}}</style>
+{% endblock %}

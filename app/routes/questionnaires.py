@@ -1,7 +1,7 @@
-from flask import Blueprint, abort, make_response, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, make_response, redirect, render_template, request, url_for
 
 from app import repositories
-from app.services.uploads import save_upload
+from app.services.uploads import inspect_stored_file, save_upload
 
 questionnaires_bp = Blueprint("questionnaires", __name__, url_prefix="/students/<int:student_id>")
 
@@ -152,13 +152,31 @@ def materials(student_id):
                 except ValueError as exc:
                     error = str(exc)
                 else:
-                    repositories.create_material(
+                    material_id = repositories.create_material(
                         student_id,
                         {
                             "uploader_type": request.form.get("uploader_type", ""),
                             "category": request.form.get("category", "其他材料"),
                             "original_filename": material.filename,
                             "stored_filename": stored_filename,
+                            "visibility": request.form.get("visibility", "老师内部"),
+                        },
+                    )
+                    metadata = inspect_stored_file(
+                        current_app.config["UPLOAD_DIR"] / stored_filename,
+                        material.filename,
+                    )
+                    repositories.archive_student_file(
+                        student_id,
+                        {
+                            "source_type": "material",
+                            "source_id": material_id,
+                            "category": request.form.get("category", "其他材料"),
+                            "original_filename": material.filename,
+                            "storage_area": "uploads",
+                            "storage_key": stored_filename,
+                            "visibility": request.form.get("visibility", "老师内部"),
+                            **metadata,
                         },
                     )
                     return redirect(
