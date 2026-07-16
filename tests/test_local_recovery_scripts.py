@@ -41,6 +41,15 @@ def test_recovery_scripts_explain_their_purpose_in_chinese_help():
         assert expected_text in result.stdout
 
 
+def test_public_start_supports_cloudflared_and_localtunnel_fallback():
+    script = (ROOT / "scripts" / "start_public.sh").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "cloudflared tunnel --url" in script
+    assert "npx localtunnel" in script
+    assert "localtunnel" in readme
+
+
 def test_readme_documents_recovery_and_public_start_commands():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 

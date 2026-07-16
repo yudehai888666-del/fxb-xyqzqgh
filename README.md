@@ -47,11 +47,13 @@ http://127.0.0.1:5050
 
 ## 临时公网访问
 
-需要把当前本地服务临时开放给外部访问时，先安装 `cloudflared`，然后执行：
+需要把当前本地服务临时开放给外部访问时，执行：
 
 ```bash
 ./scripts/start_public.sh
 ```
+
+脚本会优先使用 `cloudflared`。如果本机没有 `cloudflared`，但有 `npx`，会自动改用 `localtunnel`。
 
 macOS 安装 `cloudflared`：
 
@@ -59,7 +61,7 @@ macOS 安装 `cloudflared`：
 brew install cloudflared
 ```
 
-脚本会先确认本地服务运行在 `http://127.0.0.1:5050`，再开启临时公网。终端中出现的 `https://*.trycloudflare.com` 就是临时公网地址。
+脚本会先确认本地服务运行在 `http://127.0.0.1:5050`，再开启临时公网。终端中出现的 `https://*.trycloudflare.com` 或 localtunnel 的 `https://...` 就是临时公网地址。
 
 ## 本地运行
 

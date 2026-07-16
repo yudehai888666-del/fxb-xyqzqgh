@@ -10,8 +10,9 @@ show_help() {
 
 说明:
   - 会先确认本地服务运行在 http://127.0.0.1:5050
-  - 然后使用 cloudflared 开启临时公网 tunnel
-  - 终端里会出现 https://*.trycloudflare.com 临时访问地址
+  - 优先使用 cloudflared 开启临时公网 tunnel
+  - 如果没有 cloudflared，但有 npx，会自动使用 localtunnel
+  - 终端里会出现临时公网 https 地址
 EOF
 }
 
@@ -26,20 +27,28 @@ URL="http://127.0.0.1:${PORT}"
 
 cd "$ROOT_DIR"
 
-if ! command -v cloudflared >/dev/null 2>&1; then
-  echo "错误：没有找到 cloudflared，无法开启临时公网。" >&2
-  echo "macOS 可执行：" >&2
-  echo "  brew install cloudflared" >&2
-  echo "安装后重新执行：" >&2
-  echo "  ./scripts/start_public.sh" >&2
-  exit 1
-fi
-
 if ! curl -fsS "$URL" >/dev/null 2>&1; then
   ./scripts/start_local.sh --background
 fi
 
 echo "正在开启临时公网访问..."
 echo "本地服务：${URL}"
-echo "公网地址会在下面的 cloudflared 输出中显示。"
-cloudflared tunnel --url "$URL"
+
+if command -v cloudflared >/dev/null 2>&1; then
+  echo "公网地址会在下面的 cloudflared 输出中显示。"
+  cloudflared tunnel --url "$URL"
+  exit 0
+fi
+
+if command -v npx >/dev/null 2>&1; then
+  echo "没有找到 cloudflared，改用 npx localtunnel。"
+  echo "公网地址会在下面的 localtunnel 输出中显示。"
+  npx localtunnel --port "$PORT"
+  exit 0
+fi
+
+echo "错误：没有找到 cloudflared，也没有找到 npx，无法开启临时公网。" >&2
+echo "可选安装方式：" >&2
+echo "  brew install cloudflared" >&2
+echo "或者安装 Node.js 后使用 npx localtunnel。" >&2
+exit 1
