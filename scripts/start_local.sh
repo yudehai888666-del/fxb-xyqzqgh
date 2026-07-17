@@ -39,6 +39,7 @@ cd "$ROOT_DIR"
 if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   if curl -fsS "$URL" >/dev/null 2>&1; then
     echo "本地服务已经在运行：${URL}"
+    ./scripts/show_login_info.sh
     exit 0
   fi
   echo "错误：端口 ${PORT} 已被其他程序占用。" >&2
@@ -75,6 +76,7 @@ if [[ "$BACKGROUND" -eq 1 ]]; then
   for _ in $(seq 1 30); do
     if curl -fsS "$URL" >/dev/null 2>&1; then
       echo "本地服务已启动：${URL}"
+      ./scripts/show_login_info.sh
       echo "日志文件：logs/local-server.log"
       exit 0
     fi
@@ -86,5 +88,6 @@ if [[ "$BACKGROUND" -eq 1 ]]; then
 fi
 
 echo "本地服务启动中：${URL}"
+./scripts/show_login_info.sh
 echo "停止服务：在这个终端按 Ctrl+C"
 .venv/bin/python run.py

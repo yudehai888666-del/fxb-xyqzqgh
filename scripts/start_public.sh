@@ -33,6 +33,7 @@ fi
 
 echo "正在开启临时公网访问..."
 echo "本地服务：${URL}"
+./scripts/show_login_info.sh
 
 if command -v cloudflared >/dev/null 2>&1; then
   echo "公网地址会在下面的 cloudflared 输出中显示。"

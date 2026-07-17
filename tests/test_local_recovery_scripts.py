@@ -72,6 +72,36 @@ def test_desktop_launchers_run_recovery_before_starting():
     assert "启动学业规划-公网.command" in readme
 
 
+def test_launch_scripts_display_login_credentials():
+    expected_scripts = [
+        "start_local.sh",
+        "start_public.sh",
+    ]
+
+    for script_name in expected_scripts:
+        script = (ROOT / "scripts" / script_name).read_text(encoding="utf-8")
+        assert "./scripts/show_login_info.sh" in script
+
+    info_script = (ROOT / "scripts" / "show_login_info.sh").read_text(
+        encoding="utf-8"
+    )
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "check-admin" in info_script
+    assert "check123456" in info_script
+    assert "check-admin" in readme
+    assert "check123456" in readme
+
+
+def test_start_local_prints_login_info_when_server_already_running():
+    script = (ROOT / "scripts" / "start_local.sh").read_text(encoding="utf-8")
+
+    already_running_branch = script.split(
+        'echo "本地服务已经在运行：${URL}"', maxsplit=1
+    )[1].split("exit 0", maxsplit=1)[0]
+    assert "./scripts/show_login_info.sh" in already_running_branch
+
+
 def test_readme_documents_recovery_and_public_start_commands():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
