@@ -102,6 +102,40 @@ def test_visible_controls_never_shrink_below_60px():
     assert not undersized_controls, "\n".join(undersized_controls)
 
 
+def test_named_form_control_classes_do_not_use_fixed_heights_below_60px():
+    templates = {
+        ROOT / "app" / "templates" / "questionnaires" / "parent.html": {
+            ".q-input"
+        },
+        ROOT / "app" / "templates" / "questionnaires" / "materials.html": {
+            ".mat-input",
+            ".mat-select",
+        },
+        ROOT / "app" / "templates" / "replanning" / "new.html": {
+            ".rp-input",
+            ".rp-select",
+        },
+    }
+    undersized_controls = []
+
+    for template, selectors in templates.items():
+        contents = template.read_text(encoding="utf-8")
+        for selector in selectors:
+            rule = re.search(
+                rf"{re.escape(selector)}\s*\{{(?P<rules>[^}}]*)\}}", contents
+            )
+            assert rule is not None, f"Missing {selector} rule in {template.relative_to(ROOT)}"
+            for height in re.finditer(
+                r"(?<!min-)height\s*:\s*(\d+(?:\.\d+)?)px", rule.group("rules")
+            ):
+                if float(height.group(1)) < 60:
+                    undersized_controls.append(
+                        f"{template.relative_to(ROOT)}: {selector} ({height.group(0)})"
+                    )
+
+    assert not undersized_controls, "\n".join(undersized_controls)
+
+
 def test_replanning_and_login_outer_layouts_use_available_width():
     replanning = (ROOT / "app" / "templates" / "replanning" / "new.html").read_text(
         encoding="utf-8"
