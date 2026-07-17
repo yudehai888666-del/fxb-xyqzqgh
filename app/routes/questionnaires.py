@@ -61,16 +61,17 @@ def disclaimer_template(student_id):
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{
     font-family: "SimSun", "宋体", serif;
-    font-size: 14px;
+    font-size: 24px;
     line-height: 2;
     color: #000;
-    padding: 40px 60px;
-    max-width: 800px;
+    width: calc(100% - 64px);
+    max-width: none;
     margin: 0 auto;
+    padding: 32px 0;
   }}
-  h1 {{ text-align: center; font-size: 20px; letter-spacing: 4px; margin-bottom: 8px; }}
-  .subtitle {{ text-align: center; font-size: 13px; color: #555; margin-bottom: 32px; }}
-  h2 {{ font-size: 15px; margin: 24px 0 8px; }}
+  h1 {{ text-align: center; font-size: 42px; letter-spacing: 4px; margin-bottom: 8px; }}
+  .subtitle {{ text-align: center; font-size: 22px; color: #555; margin-bottom: 32px; }}
+  h2 {{ font-size: 30px; margin: 24px 0 8px; }}
   p {{ text-indent: 2em; margin-bottom: 8px; }}
   .blank {{ display: inline-block; border-bottom: 1px solid #000; min-width: 120px; }}
   .sign-section {{
@@ -81,8 +82,11 @@ def disclaimer_template(student_id):
   }}
   .sign-block {{ line-height: 2.5; }}
   .sign-line {{ border-bottom: 1px solid #000; display: inline-block; width: 160px; }}
+  @media (max-width: 700px) {{
+    body {{ width: calc(100% - 24px); padding: 24px 0; }}
+  }}
   @media print {{
-    body {{ padding: 20px 40px; }}
+    body {{ width: 100%; padding: 0; }}
     @page {{ size: A4; margin: 20mm 15mm; }}
   }}
 </style>
@@ -126,7 +130,7 @@ def disclaimer_template(student_id):
   </div>
 </div>
 
-<p style="margin-top:40px; font-size:12px; color:#666; text-indent:0;">
+<p style="margin-top:40px; font-size:22px; color:#666; text-indent:0;">
   打印本协议后请双方签字，签字版扫描为 PDF 后上传至系统备档。
 </p>
 </body>
