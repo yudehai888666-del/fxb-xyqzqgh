@@ -146,7 +146,7 @@
 <style>
 /* ── 问卷页通用样式（与家长问卷共用同名 class） ── */
 .q-page {
-  max-width: 860px;
+  max-width: none;
   margin: 0 auto;
   padding: 32px 0 80px;
 }
@@ -163,7 +163,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   color: var(--muted);
   margin-bottom: 10px;
 }
@@ -183,7 +183,7 @@
 
 .q-subtitle {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
   color: var(--muted);
   line-height: 1.6;
   max-width: 560px;
@@ -198,7 +198,7 @@
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
@@ -224,8 +224,8 @@
   justify-content: space-between;
   gap: 16px;
 }
-.q-progress-label { font-size: 13px; font-weight: 600; color: #4f46e5; }
-.q-progress-tip   { font-size: 12px; color: var(--muted); }
+.q-progress-label { font-size: var(--minimum-readable-font-size); font-weight: 600; color: #4f46e5; }
+.q-progress-tip   { font-size: var(--minimum-readable-font-size); color: var(--muted); }
 
 /* Section 卡片 */
 .q-section {
@@ -258,8 +258,8 @@
 .q-color-blue   .q-section-icon { background: #dbeafe; color: #2563eb; }
 .q-color-violet .q-section-icon { background: #ede9fe; color: #6d28d9; }
 
-.q-section-title { margin: 0 0 3px; font-size: 16px; font-weight: 700; color: var(--text); }
-.q-section-desc  { margin: 0; font-size: 13px; color: var(--muted); }
+.q-section-title { margin: 0 0 3px; font-size: var(--minimum-readable-font-size); font-weight: 700; color: var(--text); }
+.q-section-desc  { margin: 0; font-size: var(--minimum-readable-font-size); color: var(--muted); }
 
 /* 字段卡片 */
 .q-card-field {
@@ -281,7 +281,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   color: var(--text);
   margin-bottom: 5px;
@@ -289,7 +289,7 @@
 
 .q-helper {
   margin: 0 0 10px;
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   color: var(--muted);
   line-height: 1.6;
 }
@@ -302,7 +302,7 @@
   background: #f9fafc;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
   line-height: 1.7;
   resize: vertical;
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
@@ -333,7 +333,7 @@
   border-radius: 8px;
   background: transparent;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 500;
   text-decoration: none;
   transition: color 0.15s, border-color 0.15s;
@@ -354,7 +354,7 @@
   background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
   color: #fff;
   font: inherit;
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(79,70,229,0.35);

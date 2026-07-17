@@ -322,12 +322,12 @@ textarea {
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
-  font: 14px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: var(--minimum-readable-font-size) / 1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .text-muted-sm {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   white-space: nowrap;
 }
 
@@ -367,7 +367,7 @@ textarea {
   border-radius: 999px;
   background: #eef4ff;
   color: #174ea6;
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
 }
 
@@ -394,7 +394,7 @@ textarea {
   max-height: 180px;
   overflow: auto;
   white-space: pre-wrap;
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
 }
 
 .report-warning {
@@ -428,7 +428,7 @@ textarea {
 .path-node small {
   display: block;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
 }
 
 .path-node strong {
@@ -507,7 +507,7 @@ textarea {
 .trend-card dt {
   margin-top: 10px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
 }
 
@@ -548,7 +548,7 @@ textarea {
 
 .nav-tools {
   position: relative;
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
 }
 
 .nav-tools summary {
@@ -610,18 +610,18 @@ textarea {
 
 .student-context-main span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
 }
 
 .student-back {
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   white-space: nowrap;
 }
 
 .student-progress-compact {
   min-width: 180px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   text-align: right;
 }
 
@@ -663,7 +663,7 @@ textarea {
   padding: 11px 13px;
   border-right: 1px solid #edf0f4;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
 }
 
 .workflow-nav a:hover,
@@ -680,7 +680,7 @@ textarea {
   place-items: center;
   border-radius: 50%;
   background: #e7ebf0;
-  font-size: 11px;
+  font-size: var(--minimum-readable-font-size);
 }
 
 .workflow-step.completed b {
@@ -708,7 +708,7 @@ textarea {
   border-radius: 9px;
   background: #f3f5f8;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
 }
 
 .backoffice-banner strong {
@@ -738,7 +738,7 @@ textarea {
 
 .workspace-kicker {
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 800;
 }
 
@@ -830,7 +830,7 @@ textarea {
 .workflow-card span,
 .workflow-card p {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
 }
 
 .stage-panel {
@@ -851,7 +851,7 @@ textarea {
 
 .stage-panel-head span {
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 800;
 }
 
@@ -901,7 +901,7 @@ textarea {
 .document-strip small,
 .execution-preview span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
 }
 
 .mini-metrics {
@@ -924,7 +924,7 @@ textarea {
 
 .mini-metrics span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
 }
 
 .stage-state {
@@ -933,7 +933,7 @@ textarea {
   border-radius: 999px;
   background: #edf0f4;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
 }
 
@@ -978,7 +978,7 @@ textarea {
 
 .exam-plan-grid article > span {
   color: #7656b5;
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
 }
 
@@ -989,7 +989,7 @@ textarea {
 .exam-plan-grid dt {
   margin-top: 8px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
 }
 
@@ -1006,7 +1006,7 @@ textarea {
 .background-source-note {
   margin: -5px 0 20px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   text-align: right;
 }
 
@@ -1039,7 +1039,7 @@ textarea {
   border-radius: 8px;
   background: #fff;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   text-decoration: none;
 }
@@ -1093,7 +1093,7 @@ textarea {
 .info-list dt {
   margin-top: 10px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
 }
 

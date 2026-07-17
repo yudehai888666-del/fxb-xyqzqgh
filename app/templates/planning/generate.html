@@ -39,7 +39,7 @@
         <div class="completion-item {{ 'done' if status == done_val else 'pending' }}">
           <span class="completion-dot"></span>
           <span>{{ label }}</span>
-          <span style="margin-left:auto;font-size:11px;opacity:0.8;">{{ status }}</span>
+          <span style="margin-left:auto;font-size: var(--minimum-readable-font-size);opacity:0.8;">{{ status }}</span>
         </div>
       {% endfor %}
     </div>

@@ -389,7 +389,7 @@ if (zone) {
 
 <style>
 .mat-page {
-  max-width: 860px;
+  max-width: none;
   margin: 0 auto;
   padding: 32px 0 80px;
 }
@@ -406,7 +406,7 @@ if (zone) {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   color: var(--muted);
   margin-bottom: 10px;
 }
@@ -417,7 +417,7 @@ if (zone) {
   font-weight: 800;
   letter-spacing: -0.5px;
 }
-.mat-subtitle { margin: 0; font-size: 14px; color: var(--muted); }
+.mat-subtitle { margin: 0; font-size: var(--minimum-readable-font-size); color: var(--muted); }
 
 .mat-btn-back {
   display: inline-flex;
@@ -428,7 +428,7 @@ if (zone) {
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
@@ -452,7 +452,7 @@ if (zone) {
   border: 1px solid #fca5a5;
   border-radius: 10px;
   color: #b91c1c;
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 600;
 }
 
@@ -479,7 +479,7 @@ if (zone) {
   border-radius: 50%;
   background: var(--line);
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -492,18 +492,18 @@ if (zone) {
   color: #fff;
 }
 .mat-flow-title {
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   color: var(--text);
 }
 .mat-flow-desc {
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   color: var(--muted);
   margin-top: 2px;
 }
 .mat-flow-arrow {
   color: var(--line);
-  font-size: 18px;
+  font-size: var(--minimum-readable-font-size);
   padding: 0 12px;
   flex-shrink: 0;
 }
@@ -533,8 +533,8 @@ if (zone) {
   justify-content: center;
   flex-shrink: 0;
 }
-.mat-card-title { margin: 0 0 3px; font-size: 16px; font-weight: 700; }
-.mat-card-desc  { margin: 0; font-size: 13px; color: var(--muted); }
+.mat-card-title { margin: 0 0 3px; font-size: var(--minimum-readable-font-size); font-weight: 700; }
+.mat-card-desc  { margin: 0; font-size: var(--minimum-readable-font-size); color: var(--muted); }
 .mat-card-body  { padding: 24px; }
 
 /* 协议预览行 */
@@ -550,8 +550,8 @@ if (zone) {
 }
 .mat-agreement-icon { font-size: 32px; flex-shrink: 0; }
 .mat-agreement-info { flex: 1; }
-.mat-agreement-name { font-size: 15px; font-weight: 700; color: var(--text); }
-.mat-agreement-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.mat-agreement-name { font-size: var(--minimum-readable-font-size); font-weight: 700; color: var(--text); }
+.mat-agreement-meta { font-size: var(--minimum-readable-font-size); color: var(--muted); margin-top: 3px; }
 
 .mat-btn-download {
   display: inline-flex;
@@ -562,7 +562,7 @@ if (zone) {
   border-radius: 8px;
   background: #eff6ff;
   color: var(--primary);
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
@@ -579,7 +579,7 @@ if (zone) {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   color: var(--muted);
   line-height: 1.6;
 }
@@ -595,7 +595,7 @@ if (zone) {
   background: #f0fdf4;
   border: 1px solid #86efac;
   color: #16a34a;
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   margin-bottom: 20px;
 }
@@ -609,7 +609,7 @@ if (zone) {
 }
 .mat-field { display: flex; flex-direction: column; }
 .mat-label {
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 600;
   color: var(--muted);
   margin-bottom: 6px;
@@ -622,7 +622,7 @@ if (zone) {
   background: #f9fafc;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 .mat-input:focus, .mat-select:focus, .mat-textarea:focus {
@@ -663,7 +663,7 @@ if (zone) {
   background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
   color: #fff;
   font: inherit;
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(22,163,74,0.3);
@@ -682,7 +682,7 @@ if (zone) {
   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
   color: #fff;
   font: inherit;
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(124,58,237,0.3);
@@ -717,8 +717,8 @@ if (zone) {
   cursor: pointer;
 }
 .mat-upload-icon { color: var(--muted); margin-bottom: 10px; }
-.mat-upload-text { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-.mat-upload-hint { font-size: 12px; color: var(--muted); }
+.mat-upload-text { font-size: var(--minimum-readable-font-size); font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.mat-upload-hint { font-size: var(--minimum-readable-font-size); color: var(--muted); }
 
 /* 记录列表 */
 .mat-record-list {
@@ -729,7 +729,7 @@ if (zone) {
 }
 .mat-record-title {
   padding: 10px 16px;
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   color: var(--muted);
   background: #f8fafc;
@@ -743,7 +743,7 @@ if (zone) {
   gap: 12px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--line);
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
 }
 .mat-record-row:last-child { border-bottom: none; }
 .mat-record-main { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
@@ -753,14 +753,14 @@ if (zone) {
   border-radius: 12px;
   background: #f3f4f6;
   color: #6b7280;
-  font-size: 11px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 600;
 }
 .mat-record-reason { flex: 1; color: var(--muted); }
-.mat-record-time { font-size: 12px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+.mat-record-time { font-size: var(--minimum-readable-font-size); color: var(--muted); white-space: nowrap; flex-shrink: 0; }
 .mat-file-icon { flex-shrink: 0; }
 
-.mat-empty { padding: 20px 0 4px; font-size: 14px; color: var(--muted); }
+.mat-empty { padding: 20px 0 4px; font-size: var(--minimum-readable-font-size); color: var(--muted); }
 
 /* ── 重点材料快捷上传 ── */
 .mat-key-section {
@@ -771,7 +771,7 @@ if (zone) {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   color: #7c3aed;
   margin-bottom: 14px;
@@ -831,19 +831,19 @@ if (zone) {
 }
 
 .mat-key-slot-name {
-  font-size: 14px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   color: var(--text);
 }
 
 .mat-key-slot-desc {
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   color: var(--muted);
   line-height: 1.4;
 }
 
 .mat-key-slot-action {
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 600;
   color: #7c3aed;
   padding: 3px 10px;
@@ -856,7 +856,7 @@ if (zone) {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   color: #16a34a;
   padding: 3px 10px;
@@ -870,7 +870,7 @@ if (zone) {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 12px;
+  font-size: var(--minimum-readable-font-size);
   font-weight: 700;
   color: var(--muted);
   letter-spacing: 0.05em;

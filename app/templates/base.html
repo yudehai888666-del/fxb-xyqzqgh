@@ -25,11 +25,6 @@
       {% if request.endpoint and request.endpoint.startswith('intelligence.') %}<div class="backoffice-banner"><strong>后台资料库</strong><span>这里维护可复用的专业、岗位、产业和考试依据；真正的学生决策请回到具体学生的“目标与情报”环节完成。</span><a href="{{ url_for('students.list_view') }}">返回学生工作台</a></div>{% endif %}
       {% block content %}{% endblock %}
     </main>
-    <style>.nav-user{color:var(--muted);font-size:13px}.nav-logout{margin:0}.nav-logout button{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:13px;cursor:pointer}</style>
-    <style>
-      body :where(p, li, dt, dd, label, input, select, textarea, button, th, td, a, span, small, summary, legend) {
-        font-size: max(1em, var(--minimum-readable-font-size)) !important;
-      }
-    </style>
+    <style>.nav-user{color:var(--muted);font-size:var(--minimum-readable-font-size)}.nav-logout{margin:0}.nav-logout button{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:var(--minimum-readable-font-size);cursor:pointer}</style>
   </body>
 </html>

@@ -62,26 +62,26 @@
   <style>
     .teacher-note-panel { overflow:hidden; }
     .teacher-note-card-header { align-items:flex-start; padding-bottom:16px; border-bottom:1px solid #e8ecf2; }
-    .teacher-note-card-header h2 { margin:0; font-size:20px; }
-    .teacher-note-card-header p { margin:6px 0 0; color:var(--muted); font-size:13px; }
-    .teacher-note-private { align-self:flex-start; padding:5px 10px; border-radius:999px; background:#eef8f6; color:#0f766e; font-size:12px; font-weight:700; white-space:nowrap; }
+    .teacher-note-card-header h2 { margin:0; font-size: var(--minimum-readable-font-size); }
+    .teacher-note-card-header p { margin:6px 0 0; color:var(--muted); font-size: var(--minimum-readable-font-size); }
+    .teacher-note-private { align-self:flex-start; padding:5px 10px; border-radius:999px; background:#eef8f6; color:#0f766e; font-size: var(--minimum-readable-font-size); font-weight:700; white-space:nowrap; }
     .teacher-note-editor { display:block; padding-top:18px; }
-    .teacher-note-textarea { display:block; width:100%; min-height:390px; padding:14px; resize:vertical; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--text); font:15px/1.75 inherit; transition:border-color .15s, box-shadow .15s, background .15s; }
+    .teacher-note-textarea { display:block; width:100%; min-height:390px; padding:14px; resize:vertical; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--text); font: var(--minimum-readable-font-size) / 1.75 inherit; transition:border-color .15s, box-shadow .15s, background .15s; }
     .teacher-note-textarea:focus { outline:none; border-color:var(--primary); background:#fff; box-shadow:0 0 0 4px rgba(31,111,235,.11); }
     .teacher-note-textarea::placeholder { color:#929dad; opacity:1; }
     .voice-card { display:flex; align-items:center; justify-content:space-between; gap:22px; margin-top:18px; padding:14px; border:1px solid #d5dce6; border-radius:8px; background:#f9fafb; }
     .voice-card-main { display:flex; align-items:flex-start; gap:13px; min-width:0; }
-    .voice-icon { display:flex; align-items:center; justify-content:center; width:38px; height:38px; flex:0 0 38px; border-radius:8px; background:#eef5ff; font-size:20px; }
-    .voice-copy h3 { margin:0 0 4px; font-size:15px; }
-    .voice-status { margin:0; color:#31415a; font-size:13px; font-weight:650; }
+    .voice-icon { display:flex; align-items:center; justify-content:center; width:38px; height:38px; flex:0 0 38px; border-radius:8px; background:#eef5ff; font-size: var(--minimum-readable-font-size); }
+    .voice-copy h3 { margin:0 0 4px; font-size: var(--minimum-readable-font-size); }
+    .voice-status { margin:0; color:#31415a; font-size: var(--minimum-readable-font-size); font-weight:650; }
     .voice-status.is-listening { color:#087443; }
     .voice-status.is-error { color:#a52727; }
-    .voice-help { margin:5px 0 0; color:#66758b; font-size:12px; line-height:1.55; }
-    .voice-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:42px; padding:9px 15px; flex:0 0 auto; border:1px solid var(--primary); border-radius:9px; background:#fff; color:var(--primary); font:inherit; font-size:14px; font-weight:750; cursor:pointer; }
+    .voice-help { margin:5px 0 0; color:#66758b; font-size: var(--minimum-readable-font-size); line-height:1.55; }
+    .voice-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:42px; padding:9px 15px; flex:0 0 auto; border:1px solid var(--primary); border-radius:9px; background:#fff; color:var(--primary); font:inherit; font-size: var(--minimum-readable-font-size); font-weight:750; cursor:pointer; }
     .voice-button:hover { background:#eaf2ff; }
     .voice-button.is-listening { border-color:#b42318; background:#fff5f4; color:#b42318; }
     .voice-button:disabled { border-color:var(--line); background:#eef1f5; color:var(--muted); cursor:not-allowed; }
-    .teacher-note-privacy { display:flex; gap:8px; margin-top:15px; color:var(--muted); font-size:12px; }
+    .teacher-note-privacy { display:flex; gap:8px; margin-top:15px; color:var(--muted); font-size: var(--minimum-readable-font-size); }
     .teacher-note-privacy strong { color:#4d5968; white-space:nowrap; }
     .teacher-note-panel .form-actions { padding-top:17px; border-top:1px solid #e8ecf2; }
     .sr-only { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
