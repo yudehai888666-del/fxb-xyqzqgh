@@ -1,4 +1,5 @@
 import importlib
+import inspect
 import sqlite3
 
 from app import repositories
@@ -14,6 +15,13 @@ def _published_job(app, name="软件工程师", family="技术/研发"):
         )
         repositories.update_knowledge_status("job", job_id, "已发布")
         return admin_id, job_id, str(app.config["DATABASE"])
+
+
+def test_crawler_defaults_to_flask_application_database():
+    crawler = importlib.import_module("scripts.career_crawler")
+    signature = inspect.signature(crawler.crawl_and_store)
+    assert signature.parameters["db_path"].default == "instance/academic_planning.sqlite3"
+    assert crawler.DEFAULT_DB_PATH.name == "academic_planning.sqlite3"
 
 
 def test_crawl_and_store_writes_snapshot_and_breakdowns(app, monkeypatch):

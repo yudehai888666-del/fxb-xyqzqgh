@@ -35,6 +35,7 @@ except ImportError:  # pragma: no cover - exercised only when bs4 is absent.
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 CONFIG_PATH = Path(__file__).with_name("crawler_config.json")
+DEFAULT_DB_PATH = BASE_DIR / "instance" / "academic_planning.sqlite3"
 SUPPORTED_CITIES = {"北京", "上海", "广州", "深圳", "杭州", "成都", "全国"}
 EDUCATION_ORDER = ("博士", "硕士", "本科", "专科", "不限")
 EXPERIENCE_ORDER = ("0-1年", "1-3年", "3-5年", "5-10年", "10年以上", "不限")
@@ -596,7 +597,7 @@ def crawl_and_store(
     job_name: str,
     city: str = "全国",
     max_pages: int = 3,
-    db_path: str = "instance/planning.db",
+    db_path: str = "instance/academic_planning.sqlite3",
     owner_user_id: int = 1,
     reviewer_user_id: int = 1,
 ) -> dict[str, Any]:
@@ -729,7 +730,7 @@ def main() -> None:
     group.add_argument("--all", action="store_true", help="爬取所有已发布岗位")
     parser.add_argument("--city", default="全国", help="北京/上海/广州/深圳/杭州/成都/全国")
     parser.add_argument("--pages", type=int, default=3, help="每个关键词最多翻页数")
-    parser.add_argument("--db", default=str(BASE_DIR / "instance" / "planning.db"), help="SQLite 数据库路径")
+    parser.add_argument("--db", default=str(DEFAULT_DB_PATH), help="SQLite 数据库路径")
     parser.add_argument("--owner-user-id", type=int, default=1, help="负责人用户 ID")
     parser.add_argument("--reviewer-user-id", type=int, default=1, help="审核人用户 ID")
     args = parser.parse_args()
