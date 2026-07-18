@@ -1,0 +1,144 @@
+{
+  "platforms": [
+    {
+      "name": "猎聘",
+      "url": "https://www.liepin.com",
+      "source_kind": "招聘平台",
+      "search_url_template": "https://www.liepin.com/zhaopin/?key={keyword}&city={city_code}&currentPage={page}",
+      "enabled": true
+    },
+    {
+      "name": "拉勾",
+      "url": "https://www.lagou.com",
+      "source_kind": "招聘平台",
+      "search_url_template": "https://www.lagou.com/wn/jobs?kd={keyword}&city={city}",
+      "enabled": false
+    },
+    {
+      "name": "智联招聘",
+      "url": "https://www.zhaopin.com",
+      "source_kind": "招聘平台",
+      "search_url_template": "https://sou.zhaopin.com/?kw={keyword}&jl={city}",
+      "enabled": false
+    }
+  ],
+  "city_codes": {
+    "全国": "410",
+    "北京": "010",
+    "上海": "020",
+    "广州": "050020",
+    "深圳": "050090",
+    "杭州": "070020",
+    "成都": "280020"
+  },
+  "user_agents": [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.5; rv:127.0) Gecko/20100101 Firefox/127.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+  ],
+  "skill_keywords_by_job_family": {
+    "技术/研发": [
+      "Python",
+      "Java",
+      "Go",
+      "C++",
+      "MySQL",
+      "Redis",
+      "Docker",
+      "Git",
+      "Spring Boot",
+      "微服务",
+      "Linux",
+      "Kubernetes",
+      "算法",
+      "数据结构",
+      "Vue",
+      "React",
+      "TypeScript",
+      "Node.js",
+      "PostgreSQL",
+      "MongoDB"
+    ],
+    "数据/算法": [
+      "Python",
+      "SQL",
+      "TensorFlow",
+      "Pandas",
+      "R",
+      "机器学习",
+      "深度学习",
+      "数据挖掘",
+      "Tableau",
+      "Power BI",
+      "Spark",
+      "Hive",
+      "Excel",
+      "统计分析",
+      "A/B测试"
+    ],
+    "产品/运营": [
+      "Axure",
+      "Figma",
+      "SQL",
+      "Excel",
+      "用户研究",
+      "数据分析",
+      "增长运营",
+      "活动策划",
+      "竞品分析",
+      "项目管理",
+      "PRD",
+      "埋点分析"
+    ],
+    "金融/财务": [
+      "Excel",
+      "Python",
+      "Wind",
+      "Bloomberg",
+      "财务建模",
+      "估值",
+      "SQL",
+      "审计",
+      "风险控制",
+      "财务分析"
+    ],
+    "市场/营销": [
+      "GA",
+      "SEO",
+      "Adobe",
+      "Photoshop",
+      "SEM",
+      "内容营销",
+      "品牌策划",
+      "数据分析",
+      "用户增长",
+      "新媒体运营"
+    ]
+  },
+  "education_map": {
+    "本科": "本科",
+    "大专": "专科",
+    "专科": "专科",
+    "硕士": "硕士",
+    "博士": "博士",
+    "不限": "不限"
+  },
+  "experience_map": {
+    "应届": "0-1年",
+    "在校": "0-1年",
+    "1年": "0-1年",
+    "1-3年": "1-3年",
+    "3年": "1-3年",
+    "3-5年": "3-5年",
+    "5年": "3-5年",
+    "5-10年": "5-10年",
+    "10年": "5-10年",
+    "10年以上": "10年以上",
+    "不限": "不限"
+  }
+}
