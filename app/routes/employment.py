@@ -1,6 +1,6 @@
 import json
 
-from flask import Blueprint, abort, g, redirect, render_template, request, url_for
+from flask import Blueprint, abort, g, jsonify, redirect, render_template, request, url_for
 
 from app import employment_repository, repositories
 from app.auth import role_required
@@ -18,6 +18,7 @@ TABS = {
     "exams": "employment/_exams.html",
     "analysis": "employment/_analysis.html",
     "reports": "employment/_reports.html",
+    "explore": "employment/_explore.html",
 }
 
 
@@ -56,6 +57,12 @@ def workspace(student_id):
         reports=employment_repository.list_intelligence_reports(student_id, "就业"),
         error=request.args.get("error", ""),
     )
+
+
+@employment_bp.get("/explore-data")
+def explore_data(student_id):
+    _guard(student_id)
+    return jsonify({"jobs": employment_analysis.build_workspace(student_id)["explore"]})
 
 
 @employment_bp.post("/targets")

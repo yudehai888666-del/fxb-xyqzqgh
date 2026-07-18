@@ -1145,3 +1145,67 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+.explore-job-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.explore-job-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 18px;
+  cursor: pointer;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.explore-job-card:hover {
+  border-color: #9cb9e3;
+  box-shadow: 0 4px 16px rgba(31, 111, 235, 0.10);
+}
+
+.explore-job-card.is-targeted {
+  border-color: var(--accent);
+  background: #f0faf7;
+}
+
+.explore-salary-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: var(--primary-dark);
+  font-size: var(--minimum-readable-font-size);
+  font-weight: 700;
+}
+
+.explore-section-label {
+  margin: 22px 0 10px;
+  color: var(--accent);
+  font-size: var(--minimum-readable-font-size);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.explore-skill-expand {
+  margin-top: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fafbfd;
+}
+
+.explore-skill-expand summary {
+  padding: 14px 18px;
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.explore-skill-expand summary::-webkit-details-marker { display: none; }
+
+.explore-skill-expand[open] summary { border-bottom: 1px solid var(--line); }

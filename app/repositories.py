@@ -1230,6 +1230,45 @@ def list_knowledge_graph_links():
     ).fetchall()
 
 
+def list_major_job_links_with_market(major_name):
+    """
+    根据专业名称，查询关联岗位及最新薪资快照。
+    返回字段包含 job_id, job_name, industry_name, development_direction,
+    relevance_level, evidence_note, salary_min, salary_median, salary_max,
+    region, period_end 和 skill_count。
+    """
+    return get_db().execute(
+        """
+        SELECT j.id AS job_id, j.name AS job_name, j.industry_name,
+               j.development_direction, mj.relevance_level, mj.evidence_note,
+               ms.salary_min, ms.salary_median, ms.salary_max,
+               ms.region, ms.period_end,
+               COUNT(DISTINCT published_skills.skill_id) AS skill_count
+        FROM knowledge_majors m
+        JOIN major_job_links mj ON mj.major_id = m.id
+        JOIN knowledge_jobs j ON j.id = mj.job_id
+        LEFT JOIN employment_market_snapshots ms ON ms.id = (
+            SELECT latest.id
+            FROM employment_market_snapshots latest
+            WHERE latest.job_id = j.id AND latest.status = '已发布'
+            ORDER BY latest.period_end DESC, latest.id DESC
+            LIMIT 1
+        )
+        LEFT JOIN (
+            SELECT js.job_id, js.skill_id
+            FROM job_skill_links js
+            JOIN knowledge_skills s ON s.id = js.skill_id
+            WHERE js.status = '已发布' AND s.status = '已发布'
+        ) published_skills ON published_skills.job_id = j.id
+        WHERE m.name = ? AND j.status = '已发布'
+        GROUP BY j.id, mj.id, ms.id
+        ORDER BY CASE mj.relevance_level WHEN '核心' THEN 0 ELSE 1 END,
+                 mj.relevance_level DESC, j.name ASC
+        """,
+        (major_name,),
+    ).fetchall()
+
+
 EXAM_FIELDS = (
     "exam_name", "category", "region", "official_url", "source_name",
     "registration_start", "registration_end", "exam_date", "summary",

@@ -1,0 +1,118 @@
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>专业探索</h2>
+      <p class="muted">从{{ workspace.student.major }}出发，速查专业关联岗位、市场薪资与技能要求。</p>
+    </div>
+  </div>
+
+  {% if workspace.explore %}
+    <p class="explore-section-label">专业→岗位速查</p>
+    {% for relevance, label in [('核心', '核心岗位'), ('相关', '相关岗位')] %}
+      {% set jobs = workspace.explore | selectattr('relevance_level', 'equalto', relevance) | list %}
+      {% if jobs %}
+        <h3>{{ label }}</h3>
+        <div class="path-jobs explore-job-grid">
+          {% for job in jobs %}
+            <article class="path-node explore-job-card{% if job.is_targeted %} path-major is-targeted{% endif %}" tabindex="0" role="button" aria-controls="explore-job-{{ job.job_id }}" data-explore-job-card data-detail-target="explore-job-{{ job.job_id }}">
+              <span>{{ job.industry_name or '未标注行业' }}</span>
+              <strong>{{ job.job_name }}</strong>
+              <small>{{ job.development_direction | truncate(80, True, '...') if job.development_direction else '暂无发展方向说明' }}</small>
+              <span>关联技能 {{ job.skill_count }} 项</span>
+              <b class="explore-salary-badge">{{ job.salary_label }}</b>
+              {% if job.is_targeted %}
+                <div class="form-actions">
+                  <button class="button secondary" type="button" disabled>已设为目标</button>
+                </div>
+              {% elif current_user and current_user.role in ('admin', 'teacher') %}
+                <form method="post" action="{{ url_for('employment.save_target', student_id=workspace.student.id) }}" class="form-actions">
+                  <input type="hidden" name="job_id" value="{{ job.job_id }}">
+                  <input type="hidden" name="priority" value="1">
+                  <button class="button" type="submit">加入目标岗位</button>
+                </form>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <p class="explore-section-label">岗位技能速查</p>
+    {% for job in workspace.explore %}
+      <details id="explore-job-{{ job.job_id }}" class="explore-skill-expand"{% if loop.first %} open{% endif %}>
+        <summary>{{ job.job_name }} · 技能要求</summary>
+        {% if job.skills %}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>技能名称</th>
+                  <th>技能类型</th>
+                  <th>重要程度</th>
+                  <th>要求掌握等级</th>
+                  <th>学生当前水平</th>
+                  <th>差距</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for skill in job.skills %}
+                  <tr>
+                    <td>{{ skill.name }}</td>
+                    <td>{{ skill.type }}</td>
+                    <td><span class="status-chip"{% if skill.importance == '核心' %} style="background: var(--primary-dark); color: #fff;"{% endif %}>{{ skill.importance }}</span></td>
+                    <td>{{ skill.required_label }}</td>
+                    <td>{{ skill.current_label }}</td>
+                    <td>
+                      <div class="level-dots" role="img" aria-label="差距{{ skill.gap }}级">
+                        {% for index in range(4) %}
+                          <i{% if index < skill.gap %} class="filled"{% endif %}></i>
+                        {% endfor %}
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="empty">该岗位暂无已发布技能要求。</p>
+        {% endif %}
+      </details>
+    {% endfor %}
+  {% else %}
+    <p class="empty">该专业暂未关联已发布岗位。</p>
+  {% endif %}
+</section>
+
+<script>
+  (function () {
+    var cards = document.querySelectorAll("[data-explore-job-card]");
+    cards.forEach(function (card) {
+      function openDetail() {
+        var detail = document.getElementById(card.dataset.detailTarget);
+        if (!detail) {
+          return;
+        }
+        document.querySelectorAll(".explore-skill-expand[open]").forEach(function (item) {
+          if (item !== detail) {
+            item.open = false;
+          }
+        });
+        detail.open = true;
+        detail.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      card.addEventListener("click", function (event) {
+        if (event.target.closest("form") || event.target.closest("button") || event.target.closest("a")) {
+          return;
+        }
+        openDetail();
+      });
+      card.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openDetail();
+        }
+      });
+    });
+  }());
+</script>

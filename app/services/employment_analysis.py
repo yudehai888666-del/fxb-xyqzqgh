@@ -2,7 +2,11 @@ from datetime import date
 
 from app import employment_repository, repositories
 from app.services import student_goals
-from app.services.student_matching import build_student_intelligence_report
+from app.services.student_matching import (
+    LEVEL_LABELS,
+    REQUIRED_LEVELS,
+    build_student_intelligence_report,
+)
 
 
 class InactiveGoalPath(RuntimeError):
@@ -25,6 +29,39 @@ def _breakdown_groups(snapshot):
         for row in rows:
             row["bar_percent"] = round(row["value"] / maximum * 100) if maximum else 0
     return groups
+
+
+def _salary_label(row):
+    if row["salary_min"] is None or row["salary_max"] is None:
+        return "暂无薪资数据"
+    return f"{row['salary_min'] // 1000}~{row['salary_max'] // 1000} k/月"
+
+
+def _explore_jobs(student, target_ids, assessments):
+    assessment_map = {row["skill_id"]: row for row in assessments}
+    jobs = []
+    for row in repositories.list_major_job_links_with_market(student.major):
+        job = dict(row)
+        job["salary_label"] = _salary_label(row)
+        job["is_targeted"] = job["job_id"] in target_ids
+        job["skills"] = []
+        for requirement in repositories.list_job_skill_requirements(job["job_id"]):
+            required_level = REQUIRED_LEVELS.get(requirement["proficiency_level"], 2)
+            assessment = assessment_map.get(requirement["skill_id"])
+            current_level = assessment["current_level"] if assessment else 0
+            job["skills"].append(
+                {
+                    "skill_id": requirement["skill_id"],
+                    "name": requirement["skill_name"],
+                    "type": requirement["skill_type"],
+                    "importance": requirement["importance_level"],
+                    "required_label": LEVEL_LABELS[required_level],
+                    "current_label": LEVEL_LABELS[current_level],
+                    "gap": max(required_level - current_level, 0),
+                }
+            )
+        jobs.append(job)
+    return jobs
 
 
 def build_workspace(student_id):
@@ -60,6 +97,8 @@ def build_workspace(student_id):
             row for row in all_exam_plans if row not in current_exam_plans
         ],
         "analysis_draft": employment_repository.get_analysis_draft(student_id),
+        "skill_assessments": matching["assessments"],
+        "explore": _explore_jobs(student, target_ids, matching["assessments"]),
         "readiness": report_readiness(student_id),
     }
 
