@@ -1,3 +1,6 @@
+import importlib
+
+from flask import current_app
 from werkzeug.security import generate_password_hash
 
 from app import create_app, repositories
@@ -17,6 +20,66 @@ def create_user(role, username):
             "role": role,
         }
     )
+
+
+def test_seed_career_knowledge_creates_shipbuilding_and_computing_drafts(app):
+    seed = importlib.import_module("scripts.seed_career_knowledge")
+    with app.app_context():
+        admin_id = create_user("admin", "seed-admin")
+        result = seed.seed_career_knowledge(
+            current_app.config["DATABASE"], admin_id, admin_id
+        )
+        jobs = {row["name"]: row for row in repositories.list_knowledge_jobs()}
+        assert result["jobs"] == 12
+        assert jobs["船舶设计工程师"]["job_family"] == "造船"
+        assert jobs["后端开发工程师"]["job_family"] == "计算机"
+        assert jobs["船舶设计工程师"]["status"] == "草稿"
+        second_result = seed.seed_career_knowledge(
+            current_app.config["DATABASE"], admin_id, admin_id
+        )
+        assert second_result["jobs"] == 0
+
+
+def test_seed_career_knowledge_does_not_overwrite_published_job(app):
+    seed = importlib.import_module("scripts.seed_career_knowledge")
+    with app.app_context():
+        admin_id = create_user("admin", "published-seed-admin")
+        seed.seed_career_knowledge(current_app.config["DATABASE"], admin_id, admin_id)
+        job = next(
+            row for row in repositories.list_knowledge_jobs()
+            if row["name"] == "船舶设计工程师"
+        )
+        repositories.update_knowledge_status("job", job["id"], "已发布")
+        from app.db import get_db
+
+        get_db().execute(
+            "UPDATE knowledge_jobs SET development_direction = ? WHERE id = ?",
+            ("已审核方向", job["id"]),
+        )
+        get_db().commit()
+
+        seed.seed_career_knowledge(current_app.config["DATABASE"], admin_id, admin_id)
+        unchanged = next(
+            row for row in repositories.list_knowledge_jobs() if row["id"] == job["id"]
+        )
+        assert unchanged["development_direction"] == "已审核方向"
+
+
+def test_seed_career_knowledge_does_not_attach_drafts_to_published_job(app):
+    seed = importlib.import_module("scripts.seed_career_knowledge")
+    with app.app_context():
+        admin_id = create_user("admin", "published-link-seed-admin")
+        job_id = repositories.create_knowledge_job({"name": "船舶设计工程师"})
+        repositories.update_knowledge_status("job", job_id, "已发布")
+
+        seed.seed_career_knowledge(current_app.config["DATABASE"], admin_id, admin_id)
+
+        from app.db import get_db
+
+        link_count = get_db().execute(
+            "SELECT COUNT(*) FROM job_skill_links WHERE job_id = ?", (job_id,)
+        ).fetchone()[0]
+        assert link_count == 0
 
 
 def login(client, username):
