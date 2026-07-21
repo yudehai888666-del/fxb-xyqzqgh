@@ -36,7 +36,9 @@ except ImportError:  # pragma: no cover - exercised only when bs4 is absent.
 BASE_DIR = Path(__file__).resolve().parents[1]
 CONFIG_PATH = Path(__file__).with_name("crawler_config.json")
 DEFAULT_DB_PATH = BASE_DIR / "instance" / "academic_planning.sqlite3"
-SUPPORTED_CITIES = {"北京", "上海", "广州", "深圳", "杭州", "成都", "全国"}
+SUPPORTED_CITIES = {
+    "北京", "上海", "广州", "深圳", "杭州", "成都", "大连", "青岛", "南通", "舟山", "镇江", "全国"
+}
 EDUCATION_ORDER = ("博士", "硕士", "本科", "专科", "不限")
 EXPERIENCE_ORDER = ("0-1年", "1-3年", "3-5年", "5-10年", "10年以上", "不限")
 BREAKDOWN_TYPES = ("学历", "经验", "热门技能", "地区")
@@ -606,7 +608,7 @@ def crawl_and_store(
     market snapshot plus four groups of breakdown rows into the SQLite DB.
     """
     if city not in SUPPORTED_CITIES:
-        raise ValueError("city 仅支持：北京/上海/广州/深圳/杭州/成都/全国")
+        raise ValueError("city 仅支持：北京/上海/广州/深圳/杭州/成都/大连/青岛/南通/舟山/镇江/全国")
     if max_pages < 1:
         raise ValueError("max_pages 必须大于等于 1")
     config = load_config()

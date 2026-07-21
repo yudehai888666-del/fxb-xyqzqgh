@@ -2,6 +2,8 @@ import importlib
 import inspect
 import sqlite3
 
+import pytest
+
 from app import repositories
 from tests.employment_factories import create_login_user
 
@@ -133,3 +135,33 @@ def test_crawl_and_store_skips_existing_draft_snapshot(app, monkeypatch):
         "job_id": job_id,
         "snapshot_id": first["snapshot_id"],
     }
+
+
+@pytest.mark.parametrize("city", ("大连", "青岛", "南通", "舟山", "镇江"))
+def test_crawl_and_store_accepts_new_supported_cities(app, monkeypatch, city):
+    crawler = importlib.import_module("scripts.career_crawler")
+    assert city not in crawler.load_config()["city_codes"]
+    admin_id, _job_id, db_path = _published_job(app, name=f"{city}测试岗位")
+    monkeypatch.setattr(
+        crawler,
+        "fetch_platform_posts",
+        lambda *_args, **_kwargs: [
+            {
+                "salary": "10k-15k",
+                "education": "本科",
+                "experience": "1-3年",
+                "city": city,
+                "description": "Python SQL",
+            }
+        ],
+    )
+
+    result = crawler.crawl_and_store(
+        f"{city}测试岗位",
+        city=city,
+        db_path=db_path,
+        owner_user_id=admin_id,
+        reviewer_user_id=admin_id,
+    )
+
+    assert result["status"] == "inserted"
