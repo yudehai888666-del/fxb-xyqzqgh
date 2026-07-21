@@ -1,9 +1,19 @@
 from datetime import date
+from typing import Any, Mapping
 
 from app.db import get_db
 
 
 BREAKDOWN_TYPES = ("学历", "经验", "热门技能", "地区")
+REAL_DATA_REQUIRED_FIELDS = (
+    "source_id",
+    "source_snapshot_id",
+    "evidence_summary",
+    "limitation_note",
+    "owner_user_id",
+    "reviewer_user_id",
+    "next_check_at",
+)
 SNAPSHOT_COLUMNS = """
     ms.*, j.name AS job_name, s.name AS source_name, s.url AS source_url,
     owner.display_name AS owner_name, reviewer.display_name AS reviewer_name
@@ -27,9 +37,21 @@ def _optional_int(value):
     return int(value)
 
 
+def validate_real_market_data(data: Mapping[str, Any]) -> None:
+    if int(data.get("sample_size") or 0) <= 0:
+        raise ValueError("真实数据需要正有效薪资样本量")
+    if not data.get("source_snapshot_id"):
+        raise ValueError("真实数据必须关联来源快照")
+    if not all(str(data.get(field) or "").strip() for field in REAL_DATA_REQUIRED_FIELDS):
+        raise ValueError("真实数据必须补齐来源、证据、责任人、审核人、复核日期和限制说明")
+
+
 def _market_values(data):
-    if data.get("data_classification", "测试数据") != "测试数据":
-        raise ValueError("本阶段只能录入测试数据")
+    data_classification = data.get("data_classification", "测试数据")
+    if data_classification not in ("测试数据", "真实数据"):
+        raise ValueError("数据分类无效")
+    if data_classification == "真实数据":
+        validate_real_market_data(data)
     period_start = _require_canonical_date(data.get("period_start"), "统计周期无效")
     period_end = _require_canonical_date(data.get("period_end"), "统计周期无效")
     if period_start > period_end:
@@ -57,7 +79,7 @@ def _market_values(data):
         int(data["source_snapshot_id"]) if data.get("source_snapshot_id") else None,
         data.get("evidence_summary", "").strip(),
         data.get("limitation_note", "").strip(),
-        "测试数据",
+        data_classification,
         int(data["owner_user_id"]),
         int(data["reviewer_user_id"]),
         _require_canonical_date(data.get("next_check_at"), "复核日期无效"),
@@ -197,6 +219,15 @@ def _validate_ready_for_submission(row):
     _require_canonical_date(row["period_start"], "统计周期无效")
     _require_canonical_date(row["period_end"], "统计周期无效")
     _require_canonical_date(row["next_check_at"], "复核日期无效")
+    if row["data_classification"] == "真实数据":
+        validate_real_market_data(dict(row))
+        linked_snapshot = get_db().execute(
+            """SELECT 1 FROM intelligence_source_snapshots
+               WHERE id = ? AND source_id = ?""",
+            (row["source_snapshot_id"], row["source_id"]),
+        ).fetchone()
+        if linked_snapshot is None:
+            raise ValueError("真实数据必须关联来源快照")
 
 
 def submit_market_snapshot(snapshot_id):

@@ -1,6 +1,6 @@
 import pytest
 
-from app import employment_repository
+from app import employment_repository, repositories
 from tests.employment_factories import create_market_prerequisites
 
 
@@ -95,10 +95,64 @@ def test_published_market_snapshot_cannot_be_resubmitted(app):
             employment_repository.submit_market_snapshot(snapshot_id)
 
 
-def test_real_classification_is_locked_in_this_increment(app):
+def test_real_market_snapshot_requires_a_linked_source_snapshot(app):
     with app.app_context():
         actor_id, source_id, job_id = create_market_prerequisites()
         data = market_data(actor_id, source_id, job_id)
-        data["data_classification"] = "真实数据"
-        with pytest.raises(ValueError, match="只能录入测试数据"):
+        data.update({"data_classification": "真实数据", "source_snapshot_id": None})
+        with pytest.raises(ValueError, match="真实数据必须关联来源快照"):
             employment_repository.create_market_snapshot(data, [], actor_id)
+
+
+def test_real_market_snapshot_with_valid_evidence_can_be_submitted(app):
+    with app.app_context():
+        actor_id, source_id, job_id = create_market_prerequisites()
+        source_snapshot_id = repositories.record_intelligence_snapshot(
+            source_id,
+            {
+                "http_status": 200,
+                "content_hash": "market",
+                "content_excerpt": "公开岗位样本",
+            },
+            actor_id,
+        )[0]
+        data = market_data(actor_id, source_id, job_id)
+        data.update(
+            {
+                "data_classification": "真实数据",
+                "source_snapshot_id": source_snapshot_id,
+                "sample_size": 10,
+                "observed_posting_count": 13,
+                "evidence_summary": "1 个公开来源，10 条有效月薪样本。",
+            }
+        )
+        snapshot_id = employment_repository.create_market_snapshot(data, [], actor_id)
+        employment_repository.submit_market_snapshot(snapshot_id)
+        assert employment_repository.get_market_snapshot(snapshot_id)["status"] == "待审核"
+
+
+def test_real_market_submission_rejects_snapshot_from_another_source(app):
+    with app.app_context():
+        actor_id, source_id, job_id = create_market_prerequisites()
+        other_source_id = repositories.create_intelligence_source(
+            {"name": "另一个公开来源", "url": "https://example.test/other"}, actor_id
+        )
+        source_snapshot_id = repositories.record_intelligence_snapshot(
+            other_source_id,
+            {
+                "http_status": 200,
+                "content_hash": "other-market",
+                "content_excerpt": "其他公开岗位样本",
+            },
+            actor_id,
+        )[0]
+        data = market_data(actor_id, source_id, job_id)
+        data.update(
+            {
+                "data_classification": "真实数据",
+                "source_snapshot_id": source_snapshot_id,
+            }
+        )
+        snapshot_id = employment_repository.create_market_snapshot(data, [], actor_id)
+        with pytest.raises(ValueError, match="真实数据必须关联来源快照"):
+            employment_repository.submit_market_snapshot(snapshot_id)
