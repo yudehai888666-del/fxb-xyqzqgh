@@ -165,3 +165,44 @@ def test_crawl_and_store_accepts_new_supported_cities(app, monkeypatch, city):
     )
 
     assert result["status"] == "inserted"
+
+
+@pytest.mark.parametrize("city", ("大连", "青岛", "南通", "舟山", "镇江"))
+def test_new_city_normalization_preserves_aggregate_city_label(app, monkeypatch, city):
+    crawler = importlib.import_module("scripts.career_crawler")
+    assert crawler._extract_city(f"{city}市") == city
+    admin_id, _job_id, db_path = _published_job(app, name=f"{city}归一化测试岗位")
+    monkeypatch.setattr(
+        crawler,
+        "fetch_platform_posts",
+        lambda *_args, **_kwargs: [
+            {
+                "salary": "10k-15k",
+                "education": "本科",
+                "experience": "1-3年",
+                "city": f"{city}市",
+                "description": "Python SQL",
+            }
+        ],
+    )
+
+    result = crawler.crawl_and_store(
+        f"{city}归一化测试岗位",
+        city=city,
+        db_path=db_path,
+        owner_user_id=admin_id,
+        reviewer_user_id=admin_id,
+    )
+
+    with sqlite3.connect(db_path) as db:
+        labels = {
+            row[0]
+            for row in db.execute(
+                """
+                SELECT label FROM employment_market_breakdowns
+                WHERE snapshot_id = ? AND dimension_type = '地区'
+                """,
+                (result["snapshot_id"],),
+            )
+        }
+    assert labels == {city}

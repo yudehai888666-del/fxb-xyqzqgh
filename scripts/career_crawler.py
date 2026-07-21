@@ -36,9 +36,10 @@ except ImportError:  # pragma: no cover - exercised only when bs4 is absent.
 BASE_DIR = Path(__file__).resolve().parents[1]
 CONFIG_PATH = Path(__file__).with_name("crawler_config.json")
 DEFAULT_DB_PATH = BASE_DIR / "instance" / "academic_planning.sqlite3"
-SUPPORTED_CITIES = {
-    "北京", "上海", "广州", "深圳", "杭州", "成都", "大连", "青岛", "南通", "舟山", "镇江", "全国"
-}
+CITY_LABELS = (
+    "北京", "上海", "广州", "深圳", "杭州", "成都", "大连", "青岛", "南通", "舟山", "镇江"
+)
+SUPPORTED_CITIES = {*CITY_LABELS, "全国"}
 EDUCATION_ORDER = ("博士", "硕士", "本科", "专科", "不限")
 EXPERIENCE_ORDER = ("0-1年", "1-3年", "3-5年", "5-10年", "10年以上", "不限")
 BREAKDOWN_TYPES = ("学历", "经验", "热门技能", "地区")
@@ -352,7 +353,7 @@ def _extract_experience(text: str, experience_map: dict[str, str]) -> str:
 
 
 def _extract_city(text: str) -> str:
-    for city in ("北京", "上海", "广州", "深圳", "杭州", "成都"):
+    for city in CITY_LABELS:
         if city in text:
             return city
     return "全国"
