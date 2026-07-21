@@ -354,6 +354,76 @@ def test_market_snapshot_routes_allow_teacher_submit_and_admin_publish(tmp_path)
         assert employment_repository.get_market_snapshot(snapshot_id)["status"] == "已发布"
 
 
+def test_market_snapshot_routes_only_allow_admin_or_teacher_to_create_or_submit(tmp_path):
+    from app import employment_repository
+
+    app = make_auth_app(tmp_path)
+    admin_client = app.test_client()
+    teacher_client = app.test_client()
+    collaborator_client = app.test_client()
+    with app.app_context():
+        admin_id = create_user("admin", "market-admin")
+        teacher_id = create_user("teacher", "market-teacher")
+        create_user("collaborator", "market-collaborator")
+        source_id = repositories.create_intelligence_source(
+            {"name": "授权测试来源", "url": "https://example.test/market-access"},
+            admin_id,
+        )
+        job_id = repositories.create_knowledge_job({"name": "授权测试岗位"})
+        repositories.update_knowledge_status("job", job_id, "已发布")
+
+    def market_form_data(owner_user_id, reviewer_user_id):
+        return {
+            "job_id": job_id,
+            "region": "上海",
+            "period_start": "2026-06-01",
+            "period_end": "2026-06-30",
+            "observed_posting_count": 150,
+            "sample_size": 120,
+            "salary_min": 8000,
+            "salary_median": 12000,
+            "salary_max": 18000,
+            "currency": "CNY",
+            "salary_period": "月",
+            "source_id": source_id,
+            "evidence_summary": "授权测试招聘市场摘要",
+            "limitation_note": "合成测试样本，不代表真实招聘市场",
+            "owner_user_id": owner_user_id,
+            "reviewer_user_id": reviewer_user_id,
+            "next_check_at": "2026-10-15",
+            "data_classification": "测试数据",
+        }
+
+    login(teacher_client, "market-teacher")
+    assert teacher_client.post(
+        "/employment-market", data=market_form_data(teacher_id, admin_id)
+    ).status_code == 302
+    with app.app_context():
+        teacher_snapshot_id = employment_repository.list_market_snapshots()[0]["id"]
+
+    login(collaborator_client, "market-collaborator")
+    assert collaborator_client.post(
+        "/employment-market", data=market_form_data(teacher_id, admin_id)
+    ).status_code == 403
+    assert collaborator_client.post(
+        f"/employment-market/{teacher_snapshot_id}/submit"
+    ).status_code == 403
+
+    assert teacher_client.post(
+        f"/employment-market/{teacher_snapshot_id}/submit"
+    ).status_code == 302
+
+    login(admin_client, "market-admin")
+    assert admin_client.post(
+        "/employment-market", data=market_form_data(admin_id, admin_id)
+    ).status_code == 302
+    with app.app_context():
+        admin_snapshot_id = employment_repository.list_market_snapshots()[0]["id"]
+    assert admin_client.post(
+        f"/employment-market/{admin_snapshot_id}/submit"
+    ).status_code == 302
+
+
 def test_collaborator_can_view_market_snapshots_but_not_create(tmp_path):
     app = make_auth_app(tmp_path)
     client = app.test_client()

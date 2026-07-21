@@ -1,6 +1,7 @@
 import pytest
 
 from app import employment_repository, repositories
+from app.db import get_db
 from tests.employment_factories import create_market_prerequisites
 
 
@@ -155,4 +156,33 @@ def test_real_market_submission_rejects_snapshot_from_another_source(app):
         )
         snapshot_id = employment_repository.create_market_snapshot(data, [], actor_id)
         with pytest.raises(ValueError, match="真实数据必须关联来源快照"):
+            employment_repository.submit_market_snapshot(snapshot_id)
+
+
+def test_real_market_submission_rejects_unapproved_source(app):
+    with app.app_context():
+        actor_id, source_id, job_id = create_market_prerequisites()
+        source_snapshot_id = repositories.record_intelligence_snapshot(
+            source_id,
+            {
+                "http_status": 200,
+                "content_hash": "inactive-market",
+                "content_excerpt": "已停用来源的公开岗位样本",
+            },
+            actor_id,
+        )[0]
+        data = market_data(actor_id, source_id, job_id)
+        data.update(
+            {
+                "data_classification": "真实数据",
+                "source_snapshot_id": source_snapshot_id,
+            }
+        )
+        snapshot_id = employment_repository.create_market_snapshot(data, [], actor_id)
+        get_db().execute(
+            "UPDATE intelligence_sources SET is_active = 0 WHERE id = ?", (source_id,)
+        )
+        get_db().commit()
+
+        with pytest.raises(ValueError, match="真实数据必须关联已启用数据源"):
             employment_repository.submit_market_snapshot(snapshot_id)

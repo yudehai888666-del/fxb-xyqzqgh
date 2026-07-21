@@ -221,7 +221,14 @@ def _validate_ready_for_submission(row):
     _require_canonical_date(row["next_check_at"], "复核日期无效")
     if row["data_classification"] == "真实数据":
         validate_real_market_data(dict(row))
-        linked_snapshot = get_db().execute(
+        db = get_db()
+        active_source = db.execute(
+            "SELECT 1 FROM intelligence_sources WHERE id = ? AND is_active = 1",
+            (row["source_id"],),
+        ).fetchone()
+        if active_source is None:
+            raise ValueError("真实数据必须关联已启用数据源")
+        linked_snapshot = db.execute(
             """SELECT 1 FROM intelligence_source_snapshots
                WHERE id = ? AND source_id = ?""",
             (row["source_snapshot_id"], row["source_id"]),
