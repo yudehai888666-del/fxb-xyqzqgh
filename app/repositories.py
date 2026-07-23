@@ -34,6 +34,17 @@ def get_user_by_username(username):
     ).fetchone()
 
 
+def get_first_active_admin():
+    return get_db().execute(
+        """
+        SELECT * FROM users
+        WHERE role = 'admin' AND is_active = 1
+        ORDER BY id
+        LIMIT 1
+        """
+    ).fetchone()
+
+
 def list_users():
     return get_db().execute(
         "SELECT * FROM users ORDER BY is_active DESC, display_name, id"

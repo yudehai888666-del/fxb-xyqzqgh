@@ -9,7 +9,7 @@ show_help() {
   ./scripts/start_public.sh
 
 说明:
-  - 会先确认本地服务运行在 http://127.0.0.1:5050
+  - 使用独立的认证服务 http://127.0.0.1:5051
   - 优先使用 cloudflared 开启临时公网 tunnel
   - 如果没有 cloudflared，但有 npx，会自动使用 localtunnel
   - 终端里会出现临时公网 https 地址
@@ -22,13 +22,13 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PORT="5050"
+PORT="5051"
 URL="http://127.0.0.1:${PORT}"
 
 cd "$ROOT_DIR"
 
 if ! curl -fsS "$URL" >/dev/null 2>&1; then
-  ./scripts/start_local.sh --background
+  ./scripts/start_local.sh --background --require-login --port "$PORT"
 fi
 
 echo "正在开启临时公网访问..."

@@ -32,13 +32,18 @@ def register_auth(app):
     @app.before_request
     def load_and_protect_user():
         g.current_user = None
-        user_id = session.get("user_id")
-        if user_id is not None:
-            user = repositories.get_user(user_id)
-            if user is not None and user["is_active"]:
-                g.current_user = user
-            else:
-                session.clear()
+        if app.config.get("LOCAL_ADMIN_MODE") and request.endpoint != "static":
+            g.current_user = repositories.get_first_active_admin()
+            if g.current_user is None:
+                abort(503, "本地免登录模式需要至少一个启用的管理员账号")
+        else:
+            user_id = session.get("user_id")
+            if user_id is not None:
+                user = repositories.get_user(user_id)
+                if user is not None and user["is_active"]:
+                    g.current_user = user
+                else:
+                    session.clear()
         if app.config.get("AUTH_DISABLED") or request.endpoint in PUBLIC_ENDPOINTS:
             return None
         if g.current_user is None:

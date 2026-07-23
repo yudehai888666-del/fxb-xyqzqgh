@@ -3,18 +3,18 @@ from werkzeug.security import generate_password_hash
 from app import create_app, repositories
 
 
-def make_auth_app(tmp_path):
-    return create_app(
-        {
-            "TESTING": True,
-            "SECRET_KEY": "auth-test-secret",
-            "AUTH_DISABLED": False,
-            "DATABASE": tmp_path / "auth.sqlite3",
-            "UPLOAD_DIR": tmp_path / "uploads",
-            "GENERATED_DIR": tmp_path / "generated",
-            "BACKUP_DIR": tmp_path / "backups",
-        }
-    )
+def make_auth_app(tmp_path, **config):
+    defaults = {
+        "TESTING": True,
+        "SECRET_KEY": "auth-test-secret",
+        "AUTH_DISABLED": False,
+        "DATABASE": tmp_path / "auth.sqlite3",
+        "UPLOAD_DIR": tmp_path / "uploads",
+        "GENERATED_DIR": tmp_path / "generated",
+        "BACKUP_DIR": tmp_path / "backups",
+    }
+    defaults.update(config)
+    return create_app(defaults)
 
 
 def create_user(role, username):
@@ -59,6 +59,29 @@ def test_backend_requires_login_but_public_invitation_remains_accessible(tmp_pat
     assert response.status_code == 302
     assert "/login" in response.headers["Location"]
     assert client.get(f"/invite/{invitation['token']}").status_code == 200
+
+
+def test_local_admin_mode_uses_first_active_admin_without_login(tmp_path):
+    app = make_auth_app(tmp_path, LOCAL_ADMIN_MODE=True)
+    with app.app_context():
+        create_user("admin", "local-admin")
+        create_user("teacher", "teacher")
+
+    page = app.test_client().get("/")
+
+    assert page.status_code == 200
+    assert "local-admin" in page.get_data(as_text=True)
+
+
+def test_local_admin_mode_rejects_without_an_active_admin(tmp_path):
+    app = make_auth_app(tmp_path, LOCAL_ADMIN_MODE=True)
+    with app.app_context():
+        inactive_admin = create_user("admin", "inactive-admin")
+        repositories.set_user_active(inactive_admin, False)
+
+    response = app.test_client().get("/")
+
+    assert response.status_code == 503
 
 
 def test_admin_can_access_all_students_and_manage_users(tmp_path):

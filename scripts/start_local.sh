@@ -26,20 +26,38 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
 fi
 
 BACKGROUND=0
-if [[ "${1:-}" == "--background" ]]; then
-  BACKGROUND=1
-fi
+LOCAL_ADMIN_MODE=1
+PORT="5050"
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --background) BACKGROUND=1 ;;
+    --require-login) LOCAL_ADMIN_MODE=0 ;;
+    --port)
+      shift
+      PORT="${1:?--port requires a port number}"
+      ;;
+  esac
+  shift
+done
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PORT="5050"
 URL="http://127.0.0.1:${PORT}"
 
 cd "$ROOT_DIR"
 
+if [[ "$LOCAL_ADMIN_MODE" -eq 1 && "$PORT" != "5050" ]]; then
+  echo "错误：本地免登录管理员模式只能使用 5050 端口。" >&2
+  exit 1
+fi
+
 if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   if curl -fsS "$URL" >/dev/null 2>&1; then
     echo "本地服务已经在运行：${URL}"
-    ./scripts/show_login_info.sh
+    if [[ "$LOCAL_ADMIN_MODE" -eq 1 ]]; then
+      echo "本地版已以管理员身份进入，无需账号密码。"
+    else
+      ./scripts/show_login_info.sh
+    fi
     exit 0
   fi
   echo "错误：端口 ${PORT} 已被其他程序占用。" >&2
@@ -68,15 +86,26 @@ fi
 export ACADEMIC_PLANNING_SECRET_KEY
 ACADEMIC_PLANNING_SECRET_KEY="$(cat instance/.secret-key)"
 
+if [[ "$LOCAL_ADMIN_MODE" -eq 1 ]]; then
+  export ACADEMIC_PLANNING_LOCAL_ADMIN=1
+else
+  unset ACADEMIC_PLANNING_LOCAL_ADMIN
+fi
+export ACADEMIC_PLANNING_PORT="$PORT"
+
 if [[ "$BACKGROUND" -eq 1 ]]; then
   echo "正在后台启动本地服务..."
   nohup .venv/bin/python run.py > logs/local-server.log 2>&1 &
   echo "$!" > logs/local-server.pid
 
   for _ in $(seq 1 30); do
-    if curl -fsS "$URL" >/dev/null 2>&1; then
-      echo "本地服务已启动：${URL}"
+  if curl -fsS "$URL" >/dev/null 2>&1; then
+    echo "本地服务已启动：${URL}"
+    if [[ "$LOCAL_ADMIN_MODE" -eq 1 ]]; then
+      echo "本地版已以管理员身份进入，无需账号密码。"
+    else
       ./scripts/show_login_info.sh
+    fi
       echo "日志文件：logs/local-server.log"
       exit 0
     fi
@@ -88,6 +117,10 @@ if [[ "$BACKGROUND" -eq 1 ]]; then
 fi
 
 echo "本地服务启动中：${URL}"
-./scripts/show_login_info.sh
+if [[ "$LOCAL_ADMIN_MODE" -eq 1 ]]; then
+  echo "本地版已以管理员身份进入，无需账号密码。"
+else
+  ./scripts/show_login_info.sh
+fi
 echo "停止服务：在这个终端按 Ctrl+C"
 .venv/bin/python run.py

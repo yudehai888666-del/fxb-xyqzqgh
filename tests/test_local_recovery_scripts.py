@@ -122,15 +122,13 @@ def test_bootstrap_allows_generated_local_directories(tmp_path):
     assert "已恢复到 Git 仓库保存的最新 main" in result.stdout
 
 
-def test_launch_scripts_display_login_credentials():
-    expected_scripts = [
-        "start_local.sh",
-        "start_public.sh",
-    ]
+def test_public_start_displays_login_credentials_but_local_start_does_not():
+    public_script = (ROOT / "scripts" / "start_public.sh").read_text(encoding="utf-8")
+    local_script = (ROOT / "scripts" / "start_local.sh").read_text(encoding="utf-8")
 
-    for script_name in expected_scripts:
-        script = (ROOT / "scripts" / script_name).read_text(encoding="utf-8")
-        assert "./scripts/show_login_info.sh" in script
+    assert "./scripts/show_login_info.sh" in public_script
+    assert "ACADEMIC_PLANNING_LOCAL_ADMIN=1" in local_script
+    assert "--require-login" in public_script
 
     info_script = (ROOT / "scripts" / "show_login_info.sh").read_text(
         encoding="utf-8"
@@ -143,13 +141,40 @@ def test_launch_scripts_display_login_credentials():
     assert "check123456" in readme
 
 
-def test_start_local_prints_login_info_when_server_already_running():
+def test_local_start_enables_admin_mode_but_public_start_does_not():
+    local_script = (ROOT / "scripts" / "start_local.sh").read_text(encoding="utf-8")
+    public_script = (ROOT / "scripts" / "start_public.sh").read_text(encoding="utf-8")
+
+    assert "ACADEMIC_PLANNING_LOCAL_ADMIN=1" in local_script
+    assert "ACADEMIC_PLANNING_LOCAL_ADMIN=1" not in public_script
+
+
+def test_local_server_binds_to_loopback_only():
+    run_script = (ROOT / "run.py").read_text(encoding="utf-8")
+
+    assert 'host="127.0.0.1"' in run_script
+
+
+def test_public_start_uses_a_separate_authenticated_port():
+    public_script = (ROOT / "scripts" / "start_public.sh").read_text(encoding="utf-8")
+
+    assert 'PORT="5051"' in public_script
+    assert './scripts/start_local.sh --background --require-login --port "$PORT"' in public_script
+
+
+def test_local_admin_mode_is_limited_to_the_default_port():
+    local_script = (ROOT / "scripts" / "start_local.sh").read_text(encoding="utf-8")
+
+    assert '"$LOCAL_ADMIN_MODE" -eq 1 && "$PORT" != "5050"' in local_script
+
+
+def test_start_local_reports_admin_mode_when_server_is_already_running():
     script = (ROOT / "scripts" / "start_local.sh").read_text(encoding="utf-8")
 
     already_running_branch = script.split(
         'echo "本地服务已经在运行：${URL}"', maxsplit=1
     )[1].split("exit 0", maxsplit=1)[0]
-    assert "./scripts/show_login_info.sh" in already_running_branch
+    assert "本地版已以管理员身份进入，无需账号密码。" in already_running_branch
 
 
 def test_readme_documents_recovery_and_public_start_commands():
