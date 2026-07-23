@@ -4,6 +4,7 @@
   <section class="page-heading">
     <div><p class="eyebrow">测试数据治理</p><h1>就业市场快照</h1><p class="muted">当前仅录入合成测试样本；审核发布后才可供后续就业情报模块引用。</p></div>
     {% if current_user and current_user['role'] in ('admin','teacher') %}<a class="button" href="{{ url_for('intelligence.market_snapshots', new=1) }}">录入市场快照</a>{% endif %}
+    {% if current_user and current_user['role'] == 'admin' %}<a class="button secondary" href="{{ url_for('intelligence.market_collection_form') }}">采集公开岗位数据</a>{% endif %}
   </section>
   {% if message %}<div class="notice">{{ message }}</div>{% endif %}
   {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
@@ -16,7 +17,7 @@
         <td><strong>{{ snapshot['job_name'] }}</strong><br>{{ snapshot['region'] }}</td>
         <td>{{ snapshot['period_start'] }} → {{ snapshot['period_end'] }}</td>
         <td>招聘观察：{{ snapshot['observed_posting_count'] }}<br>样本量：{{ snapshot['sample_size'] }}<br>{% if snapshot['salary_median'] %}薪资中位：{{ snapshot['salary_median'] }} {{ snapshot['currency'] }}/{{ snapshot['salary_period'] }}{% else %}<span class="muted">薪资待补充</span>{% endif %}</td>
-        <td><a href="{{ url_for('intelligence.source_detail', source_id=snapshot['source_id']) }}">{{ snapshot['source_name'] }}</a><br>{{ snapshot['evidence_summary'] or '待补证据' }}<br><span class="muted">负责人：{{ snapshot['owner_name'] }}；审核：{{ snapshot['reviewer_name'] }}；复核：{{ snapshot['next_check_at'] }}</span><br><span class="muted">{{ snapshot['data_classification'] }} · {{ snapshot['limitation_note'] }}</span></td>
+        <td><a href="{{ url_for('intelligence.source_detail', source_id=snapshot['source_id']) }}">{{ snapshot['source_name'] }}</a><br><span class="muted">来源快照 ID：{{ snapshot['source_snapshot_id'] or '未关联' }}；数据类型：{{ snapshot['data_classification'] }}</span><br>{{ snapshot['evidence_summary'] or '待补证据' }}<br><span class="muted">负责人：{{ snapshot['owner_name'] }}；审核：{{ snapshot['reviewer_name'] }}；复核：{{ snapshot['next_check_at'] }}</span><br><span class="muted">限制说明：{{ snapshot['limitation_note'] }}</span></td>
         <td><span class="status-chip">{{ snapshot['status'] }}</span></td>
         <td><div class="compact-actions">
           {% if snapshot['status'] in ('草稿','已退回') %}<a class="button secondary" href="{{ url_for('intelligence.market_snapshot_edit', snapshot_id=snapshot['id']) }}">编辑</a><form method="post" action="{{ url_for('intelligence.submit_market_snapshot', snapshot_id=snapshot['id']) }}"><button class="button secondary" type="submit">提交审核</button></form>{% endif %}

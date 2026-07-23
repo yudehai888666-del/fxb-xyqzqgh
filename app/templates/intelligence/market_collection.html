@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}采集就业市场数据 - 学业规划工作台{% endblock %}
+{% block content %}
+  <section class="page-heading">
+    <div><p class="eyebrow">公开招聘数据</p><h1>就业市场数据采集</h1></div>
+    <a class="button secondary" href="{{ url_for('intelligence.market_snapshots') }}">返回快照清单</a>
+  </section>
+  {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+
+  <section class="panel form-panel">
+    <p class="muted">仅采集已批准、公开可访问的页面；遇访问限制会停止并记录。</p>
+    {% if current_user and current_user['role'] == 'admin' %}
+      <form method="post" action="{{ url_for('intelligence.collect_employment_market') }}" class="form-grid">
+        <label>已发布岗位<select name="job_id" required><option value="">请选择岗位</option>{% for job in jobs %}<option value="{{ job['id'] }}">{{ job['name'] }}</option>{% endfor %}</select></label>
+        <label>城市<select name="city" required>{% for city in cities %}<option value="{{ city }}"{% if city == '全国' %} selected{% endif %}>{{ city }}</option>{% endfor %}</select></label>
+        <label>最多采集页数<select name="max_pages" required>{% for count in page_counts %}<option value="{{ count }}"{% if count == 1 %} selected{% endif %}>{{ count }}</option>{% endfor %}</select></label>
+        <div class="form-actions"><button class="button" type="submit">开始采集</button></div>
+      </form>
+    {% endif %}
+  </section>
+{% endblock %}

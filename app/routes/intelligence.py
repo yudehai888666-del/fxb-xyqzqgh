@@ -1,6 +1,8 @@
 import sqlite3
 
-from flask import Blueprint, abort, g, redirect, render_template, request, url_for
+from flask import (
+    Blueprint, abort, current_app, g, redirect, render_template, request, url_for,
+)
 
 from app import employment_repository, repositories
 from app.auth import role_required
@@ -9,9 +11,11 @@ from app.services.intelligence_collection import (
     collect_source,
     validate_public_url,
 )
+from scripts.career_crawler import CITY_LABELS, SUPPORTED_CITIES, crawl_and_store
 
 
 intelligence_bp = Blueprint("intelligence", __name__)
+COLLECTION_CITIES = ("全国", *CITY_LABELS)
 
 
 def _actor_id():
@@ -48,6 +52,25 @@ def _market_breakdowns(form):
             "sort_order": index,
         })
     return rows
+
+
+def _market_collection_form(error=""):
+    return render_template(
+        "intelligence/market_collection.html",
+        jobs=repositories.list_published_jobs(),
+        cities=COLLECTION_CITIES,
+        page_counts=(1, 2, 3),
+        error=error,
+    )
+
+
+def _market_collection_audit(job_id, city, outcome):
+    _audit(
+        "collect_employment_market",
+        "employment_market_collection",
+        job_id,
+        f"job_id={job_id or ''},city={city},outcome={outcome}",
+    )
 
 
 @intelligence_bp.get("/knowledge")
@@ -344,6 +367,68 @@ def market_snapshots():
         message=request.args.get("message", ""),
         error=request.args.get("error", ""),
     )
+
+
+@intelligence_bp.get("/employment-market/collect")
+@role_required("admin", "teacher")
+def market_collection_form():
+    return _market_collection_form(request.args.get("error", ""))
+
+
+@intelligence_bp.post("/employment-market/collect")
+@role_required("admin")
+def collect_employment_market():
+    city = request.form.get("city", "").strip()
+    try:
+        job_id = int(request.form.get("job_id", ""))
+    except (TypeError, ValueError):
+        _market_collection_audit(None, city, "validation_failed")
+        return redirect(url_for("intelligence.market_collection_form", error="请选择已发布岗位"))
+    job = next(
+        (row for row in repositories.list_published_jobs() if row["id"] == job_id),
+        None,
+    )
+    if job is None:
+        _market_collection_audit(job_id, city, "validation_failed")
+        return redirect(url_for("intelligence.market_collection_form", error="请选择已发布岗位"))
+    if city not in SUPPORTED_CITIES:
+        _market_collection_audit(job_id, city, "validation_failed")
+        return redirect(url_for("intelligence.market_collection_form", error="请选择支持的城市"))
+    try:
+        max_pages = int(request.form.get("max_pages", ""))
+    except (TypeError, ValueError):
+        max_pages = 0
+    if not 1 <= max_pages <= 3:
+        _market_collection_audit(job_id, city, "validation_failed")
+        return redirect(url_for("intelligence.market_collection_form", error="采集页数仅支持 1 至 3 页"))
+
+    try:
+        result = crawl_and_store(
+            job_name=job["name"],
+            city=city,
+            max_pages=max_pages,
+            db_path=str(current_app.config["DATABASE"]),
+            owner_user_id=_actor_id(),
+            reviewer_user_id=_actor_id(),
+        )
+    except Exception:
+        _market_collection_audit(job_id, city, "failed")
+        return redirect(url_for(
+            "intelligence.market_snapshots",
+            error="采集暂未完成，请查看审计记录后重试",
+        ))
+
+    outcome = str(result.get("status", "completed"))
+    _market_collection_audit(job_id, city, outcome)
+    messages = {
+        "inserted": "采集完成，已生成市场快照草稿",
+        "skipped": "本期已有待审核快照，未重复采集",
+        "insufficient_confidence": "采集完成，结果未达到入库置信度",
+    }
+    return redirect(url_for(
+        "intelligence.market_snapshots",
+        message=messages.get(outcome, "采集完成，结果已记录"),
+    ))
 
 
 @intelligence_bp.route("/employment-market/<int:snapshot_id>/edit", methods=("GET", "POST"))

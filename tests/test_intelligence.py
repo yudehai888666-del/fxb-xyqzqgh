@@ -498,6 +498,108 @@ def test_collaborator_can_view_market_snapshots_but_not_create(tmp_path):
     assert client.post("/employment-market", data={}).status_code == 403
 
 
+def test_teacher_can_view_collection_form_but_only_admin_can_run_it(tmp_path, monkeypatch):
+    app = make_auth_app(tmp_path)
+    teacher = app.test_client()
+    admin = app.test_client()
+    with app.app_context():
+        admin_id = create_user("admin", "collector-admin")
+        create_user("teacher", "collector-teacher")
+        job_id = repositories.create_knowledge_job({"name": "船舶设计工程师"}, admin_id)
+        repositories.update_knowledge_status("job", job_id, "已发布")
+    login(teacher, "collector-teacher")
+    assert teacher.get("/employment-market/collect").status_code == 200
+    assert teacher.post(
+        "/employment-market/collect", data={"job_id": job_id, "city": "上海"}
+    ).status_code == 403
+
+    calls = []
+
+    def collect(**kwargs):
+        calls.append(kwargs)
+        return {"status": "inserted", "snapshot_id": 9}
+
+    monkeypatch.setattr("app.routes.intelligence.crawl_and_store", collect)
+    login(admin, "collector-admin")
+    assert admin.post(
+        "/employment-market/collect",
+        data={"job_id": job_id, "city": "上海", "max_pages": "1"},
+    ).status_code == 302
+    assert calls == [{
+        "job_name": "船舶设计工程师",
+        "city": "上海",
+        "max_pages": 1,
+        "db_path": str(app.config["DATABASE"]),
+        "owner_user_id": admin_id,
+        "reviewer_user_id": admin_id,
+    }]
+    with app.app_context():
+        from app.db import get_db
+
+        audit = get_db().execute(
+            "SELECT target_type, target_id, details FROM audit_logs "
+            "WHERE action = 'collect_employment_market'"
+        ).fetchone()
+    assert tuple(audit) == (
+        "employment_market_collection",
+        job_id,
+        f"job_id={job_id},city=上海,outcome=inserted",
+    )
+
+
+def test_collection_rejects_invalid_requests_and_redacts_crawler_failures(tmp_path, monkeypatch):
+    app = make_auth_app(tmp_path)
+    client = app.test_client()
+    with app.app_context():
+        admin_id = create_user("admin", "collection-validation-admin")
+        published_job_id = repositories.create_knowledge_job(
+            {"name": "已发布采集岗位"}, admin_id
+        )
+        repositories.update_knowledge_status("job", published_job_id, "已发布")
+        draft_job_id = repositories.create_knowledge_job(
+            {"name": "草稿采集岗位"}, admin_id
+        )
+    login(client, "collection-validation-admin")
+
+    calls = []
+    monkeypatch.setattr(
+        "app.routes.intelligence.crawl_and_store",
+        lambda **kwargs: calls.append(kwargs),
+    )
+    invalid_requests = (
+        {"job_id": draft_job_id, "city": "上海", "max_pages": "1"},
+        {"job_id": published_job_id, "city": "不支持城市", "max_pages": "1"},
+        {"job_id": published_job_id, "city": "上海", "max_pages": "4"},
+    )
+    for data in invalid_requests:
+        assert client.post("/employment-market/collect", data=data).status_code == 302
+    assert calls == []
+    response = client.post(
+        "/employment-market/collect", data=invalid_requests[0], follow_redirects=True
+    )
+    assert "请选择已发布岗位" in response.get_data(as_text=True)
+
+    def fail_collection(**_kwargs):
+        raise RuntimeError("internal crawler traceback and credentials")
+
+    monkeypatch.setattr("app.routes.intelligence.crawl_and_store", fail_collection)
+    response = client.post(
+        "/employment-market/collect",
+        data={"job_id": published_job_id, "city": "上海", "max_pages": "1"},
+        follow_redirects=True,
+    )
+    assert "采集暂未完成，请查看审计记录后重试" in response.get_data(as_text=True)
+    assert "internal crawler traceback and credentials" not in response.get_data(as_text=True)
+    with app.app_context():
+        from app.db import get_db
+
+        audit = get_db().execute(
+            "SELECT details FROM audit_logs WHERE action = 'collect_employment_market' "
+            "ORDER BY id DESC"
+        ).fetchone()
+    assert audit[0] == f"job_id={published_job_id},city=上海,outcome=failed"
+
+
 def test_only_admin_configures_sources_but_teacher_can_run_collection(tmp_path, monkeypatch):
     app = make_auth_app(tmp_path)
     teacher_client = app.test_client()
