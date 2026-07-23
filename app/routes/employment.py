@@ -73,7 +73,7 @@ def explore_data(student_id):
 @role_required("admin", "teacher")
 def save_target(student_id):
     _guard(student_id)
-    path_mode = request.form.get("path_mode", "个人计划")
+    path_mode = request.form.get("path_mode", "")
     if path_mode not in ("专业推荐", "个人计划"):
         abort(400)
     try:

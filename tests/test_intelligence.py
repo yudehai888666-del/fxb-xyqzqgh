@@ -769,7 +769,7 @@ def test_admin_can_set_target_and_skill_then_view_visual_report(tmp_path):
     assert legacy_target.status_code == 307
     assert client.post(
         f"/students/{student_id}/employment/targets",
-        data={"job_id": job_id, "priority": 1, "target_note": "第一方向"},
+        data={"job_id": job_id, "priority": 1, "path_mode": "个人计划", "target_note": "第一方向"},
     ).status_code == 302
     legacy_skill = client.post(
         f"/students/{student_id}/intelligence-report/skills",

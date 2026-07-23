@@ -28,6 +28,7 @@
                 <form method="post" action="{{ url_for('employment.save_target', student_id=workspace.student.id) }}" class="form-actions">
                   <input type="hidden" name="job_id" value="{{ job.job_id }}">
                   <input type="hidden" name="priority" value="1">
+                  <input type="hidden" name="path_mode" value="专业推荐">
                   <button class="button" type="submit">加入目标岗位</button>
                 </form>
               {% endif %}

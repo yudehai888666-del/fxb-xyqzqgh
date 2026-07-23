@@ -128,6 +128,23 @@ def test_teacher_saves_self_chosen_target_with_path_reason(tmp_path):
     assert target["target_note"].startswith("路径：个人计划")
 
 
+def test_target_requires_explicit_path_mode(tmp_path):
+    auth_app = make_auth_app(tmp_path, "target-path-mode")
+    client = auth_app.test_client()
+    with auth_app.app_context():
+        create_login_user("admin", "target-path-admin")
+        job_id, _ = create_published_job_and_skill("显式路径岗位", "显式路径技能")
+        student_id = employment_student(auth_app)
+    login(client, "target-path-admin")
+    response = client.post(
+        f"/students/{student_id}/employment/targets",
+        data={"job_id": job_id, "priority": 1, "target_note": "没有说明路径"},
+    )
+    assert response.status_code == 400
+    with auth_app.app_context():
+        assert repositories.list_student_job_targets(student_id) == []
+
+
 def test_personal_market_view_hides_legacy_test_snapshots(client, app):
     with app.app_context():
         student_id, job_ids = create_shipbuilding_student_with_four_current_jobs()
@@ -340,6 +357,7 @@ def test_explore_tab_renders_major_jobs_market_and_skills(tmp_path):
     assert "9~15 k/月" in text
     assert "已设为目标" in text
     assert "加入目标岗位" in text
+    assert 'name="path_mode" value="专业推荐"' in text
     assert "SQL分析" in text
     assert "工具软件" in text
     assert "未评估" not in text
