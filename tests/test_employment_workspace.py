@@ -356,13 +356,29 @@ def test_explore_tab_renders_major_jobs_market_and_skills(tmp_path):
     assert "产品运营" in text
     assert "9~15 k/月" in text
     assert "已设为目标" in text
-    assert "加入目标岗位" in text
-    assert 'name="path_mode" value="专业推荐"' in text
+    assert "加入目标岗位" not in text
+    assert "需补充真实市场与技能证据" in text
+    assert 'name="path_mode" value="专业推荐"' not in text
     assert "SQL分析" in text
     assert "工具软件" in text
     assert "未评估" not in text
     assert 'class="level-dots"' in text
     assert client.get(f"/students/{student_id}/employment/explore-data").status_code == 200
+
+
+def test_explore_offers_professional_add_only_with_current_real_evidence(tmp_path):
+    auth_app = make_auth_app(tmp_path, "explore-real-evidence")
+    client = auth_app.test_client()
+    with auth_app.app_context():
+        create_login_user("admin", "explore-real-admin")
+        student_id, _ = create_shipbuilding_student_with_four_current_jobs()
+    login(client, "explore-real-admin")
+    page = client.get(f"/students/{student_id}/employment?tab=explore")
+    text = page.get_data(as_text=True)
+    assert page.status_code == 200
+    assert "船舶总体设计工程师" in text
+    assert "加入目标岗位" in text
+    assert 'name="path_mode" value="专业推荐"' in text
 
 
 def test_missing_student_employment_workspace_is_404(client):

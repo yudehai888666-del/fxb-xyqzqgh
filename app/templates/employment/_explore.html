@@ -7,8 +7,9 @@
   </div>
 
   {% if workspace.explore %}
+    {% set professional_candidate_ids = workspace.career_positioning.professional_candidates | map(attribute='job_id') | list %}
     <p class="explore-section-label">专业→岗位速查</p>
-    {% for relevance, label in [('核心', '核心岗位'), ('相关', '相关岗位')] %}
+    {% for relevance, label in [('高度相关', '高度相关岗位'), ('核心', '核心岗位'), ('相关', '相关岗位'), ('可转入', '可转入岗位')] %}
       {% set jobs = workspace.explore | selectattr('relevance_level', 'equalto', relevance) | list %}
       {% if jobs %}
         <h3>{{ label }}</h3>
@@ -24,13 +25,15 @@
                 <div class="form-actions">
                   <button class="button secondary" type="button" disabled>已设为目标</button>
                 </div>
-              {% elif current_user and current_user.role in ('admin', 'teacher') %}
+              {% elif job.job_id in professional_candidate_ids and current_user and current_user.role in ('admin', 'teacher') %}
                 <form method="post" action="{{ url_for('employment.save_target', student_id=workspace.student.id) }}" class="form-actions">
                   <input type="hidden" name="job_id" value="{{ job.job_id }}">
                   <input type="hidden" name="priority" value="1">
                   <input type="hidden" name="path_mode" value="专业推荐">
                   <button class="button" type="submit">加入目标岗位</button>
                 </form>
+              {% elif current_user and current_user.role in ('admin', 'teacher') %}
+                <span class="status-chip">需补充真实市场与技能证据</span>
               {% endif %}
             </article>
           {% endfor %}
