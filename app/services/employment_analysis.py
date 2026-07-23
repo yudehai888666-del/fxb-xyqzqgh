@@ -1,4 +1,5 @@
 from datetime import date
+import re
 from typing import Any, Mapping, Optional
 
 from app import employment_repository, repositories
@@ -36,6 +37,31 @@ def _salary_label(row):
     if row["salary_min"] is None or row["salary_max"] is None:
         return "暂无薪资数据"
     return f"{row['salary_min'] // 1000}~{row['salary_max'] // 1000} k/月"
+
+
+def _is_current_snapshot(snapshot):
+    try:
+        next_check_at = date.fromisoformat(snapshot["next_check_at"])
+    except (TypeError, ValueError):
+        return False
+    return (
+        snapshot["status"] == "已发布"
+        and snapshot["sample_size"] > 0
+        and next_check_at >= date.today()
+    )
+
+
+def _current_market_snapshots(job_id):
+    return [
+        snapshot
+        for snapshot in employment_repository.list_market_snapshots(job_id)
+        if _is_current_snapshot(snapshot)
+    ]
+
+
+def _target_path_mode(target_note):
+    match = re.match(r"^路径：(专业推荐|个人计划)(?:；|$)", target_note or "")
+    return match.group(1) if match else "未记录"
 
 
 def _current_real_snapshots(job_id, filters):
@@ -153,9 +179,7 @@ def build_workspace(student_id, career_filters=None):
     target_jobs = [row for row in matching["jobs"] if row["job"]["id"] in target_ids]
     snapshots = []
     for job_result in target_jobs:
-        for snapshot in employment_repository.list_current_market_snapshots(
-            job_result["job"]["id"]
-        ):
+        for snapshot in _current_market_snapshots(job_result["job"]["id"]):
             snapshots.append({"record": snapshot, "breakdowns": _breakdown_groups(snapshot)})
     all_exam_plans = repositories.list_student_exam_plans(student_id)
     today = date.today().isoformat()
@@ -179,7 +203,21 @@ def build_workspace(student_id, career_filters=None):
         "analysis_draft": employment_repository.get_analysis_draft(student_id),
         "skill_assessments": matching["assessments"],
         "explore": _explore_jobs(student, target_ids, matching["assessments"]),
-        "career_positioning": build_career_positioning(student_id, career_filters),
+        "career_positioning": {
+            **build_career_positioning(student_id, career_filters),
+            "mode": _target_path_mode(next(
+                (row["target_note"] for row in targets if row["priority"] == 1), ""
+            )),
+        },
+        "development_directions": [
+            {
+                "job_id": target["job_id"],
+                "job_name": target["job_name"],
+                "text": target["development_direction"],
+            }
+            for target in targets
+            if target["development_direction"]
+        ],
         "readiness": report_readiness(student_id),
     }
 
@@ -215,7 +253,7 @@ def report_readiness(student_id):
         ]
         if zero_without_note:
             blocking.append("零级核心技能必须明确记录无证据：" + "、".join(zero_without_note))
-        if not employment_repository.list_current_market_snapshots(primary["job_id"]):
+        if not _current_market_snapshots(primary["job_id"]):
             blocking.append("第一目标缺少已审核且未过期的市场快照")
     draft = employment_repository.get_analysis_draft(student_id)
     for field, label in (
@@ -238,6 +276,6 @@ def report_readiness(student_id):
             continue
         if not repositories.list_job_skill_requirements(target["job_id"]):
             warnings.append(f"第{target['priority']}目标缺少已审核技能关系")
-        if not employment_repository.list_current_market_snapshots(target["job_id"]):
+        if not _current_market_snapshots(target["job_id"]):
             warnings.append(f"第{target['priority']}目标缺少市场快照")
     return {"ready": not blocking, "blocking": blocking, "warnings": warnings}

@@ -44,11 +44,30 @@ def _snapshot_payload(workspace, generated_at):
         "targets": [dict(row) for row in workspace["targets"]],
         "jobs": workspace["jobs"],
         "market_snapshots": workspace["market_snapshots"],
+        "career_positioning": {
+            "mode": workspace["career_positioning"]["mode"],
+        },
+        "development_directions": workspace["development_directions"],
         "trends": [dict(row) for row in workspace["trends"]],
         "exam_plans": [dict(row) for row in workspace["exam_plans"]],
         "teacher_analysis": dict(workspace["analysis_draft"]),
         "warnings": workspace["readiness"]["warnings"],
     })
+
+
+def _report_classification(workspace):
+    records = [item["record"] for item in workspace["market_snapshots"]]
+    if not records:
+        return "测试数据"
+    today = datetime.now(timezone.utc).date().isoformat()
+    if all(
+        row["data_classification"] == "真实数据"
+        and row["status"] == "已发布"
+        and row["next_check_at"] >= today
+        for row in records
+    ):
+        return "真实数据"
+    return "测试数据"
 
 
 def generate(student_id, actor_id):
@@ -58,6 +77,7 @@ def generate(student_id, actor_id):
         raise ReportNotReady(readiness["blocking"])
     workspace = employment_analysis.build_workspace(student_id)
     payload = _snapshot_payload(workspace, utc_now())
+    classification = _report_classification(workspace)
     snapshot_json = json.dumps(
         payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     )
@@ -66,7 +86,7 @@ def generate(student_id, actor_id):
         db.execute("BEGIN IMMEDIATE")
         version = employment_repository.next_report_version(student_id, "就业")
         report_id = employment_repository.insert_intelligence_report(
-            student_id, "就业", version, "测试数据", snapshot_json, actor_id
+            student_id, "就业", version, classification, snapshot_json, actor_id
         )
         db.commit()
         return report_id

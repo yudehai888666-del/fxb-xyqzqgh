@@ -3,6 +3,7 @@ import json
 import pytest
 
 from app import employment_repository, repositories
+from app.db import get_db
 from app.services import intelligence_reports
 from tests.employment_factories import (
     complete_employment_student,
@@ -11,6 +12,48 @@ from tests.employment_factories import (
     login,
     make_auth_app,
 )
+
+
+def create_ready_real_market_student(app):
+    student_id, _ = complete_employment_student(app)
+    with app.app_context():
+        actor = repositories.get_user_by_username("workspace-admin")
+        target = repositories.list_student_job_targets(student_id)[0]
+        source_id = employment_repository.list_market_snapshots(target["job_id"])[0]["source_id"]
+        source_snapshot_id = get_db().execute(
+            """INSERT INTO intelligence_source_snapshots
+               (source_id, http_status, content_hash, content_excerpt, created_by)
+               VALUES (?, 200, 'report-real-source', '公开岗位样本摘要', ?)""",
+            (source_id, actor["id"]),
+        ).lastrowid
+        get_db().execute(
+            """UPDATE intelligence_sources
+               SET compliance_note = '已完成公开数据合规审查', is_active = 1
+               WHERE id = ?""",
+            (source_id,),
+        )
+        get_db().execute(
+            """UPDATE employment_market_snapshots
+               SET data_classification = '真实数据', source_snapshot_id = ?,
+                   evidence_summary = '公开招聘岗位抽样',
+                   limitation_note = '公开招聘样本，不代表全市场'
+               WHERE job_id = ?""",
+            (source_snapshot_id, target["job_id"]),
+        )
+        get_db().execute(
+            """UPDATE student_job_targets
+               SET target_note = '路径：专业推荐'
+               WHERE student_id = ? AND job_id = ?""",
+            (student_id, target["job_id"]),
+        )
+        get_db().execute(
+            """UPDATE knowledge_jobs
+               SET development_direction = '工程能力提升与项目协同。典型路径，不承诺固定年限、薪资或必然晋升。'
+               WHERE id = ?""",
+            (target["job_id"],),
+        )
+        get_db().commit()
+    return student_id
 
 
 def test_report_generation_freezes_data_and_increments_versions(app):
@@ -26,8 +69,42 @@ def test_report_generation_freezes_data_and_increments_versions(app):
         first_after = employment_repository.get_intelligence_report(first_id)["snapshot_json"]
         second = employment_repository.get_intelligence_report(second_id)
         assert first_before == first_after
+        assert employment_repository.get_intelligence_report(first_id)["data_classification"] == "测试数据"
         assert second["version"] == 2
         assert json.loads(first_before)["student"]["id"] == student_id
+
+
+def test_real_report_freezes_target_path_market_evidence_and_development_direction(app):
+    student_id = create_ready_real_market_student(app)
+    with app.app_context():
+        report_id = intelligence_reports.generate(student_id, actor_id=1)
+        report = employment_repository.get_intelligence_report(report_id)
+        payload = json.loads(report["snapshot_json"])
+    assert report["data_classification"] == "真实数据"
+    assert payload["career_positioning"]["mode"] == "专业推荐"
+    assert payload["development_directions"][0]["text"].endswith(
+        "典型路径，不承诺固定年限、薪资或必然晋升。"
+    )
+    assert payload["market_snapshots"][0]["record"]["source_snapshot_id"]
+
+
+def test_report_detail_renders_frozen_real_market_evidence(client, app):
+    student_id = create_ready_real_market_student(app)
+    with app.app_context():
+        report_id = intelligence_reports.generate(student_id, actor_id=1)
+        get_db().execute(
+            "UPDATE knowledge_jobs SET development_direction = '不应出现在冻结报告中'"
+        )
+        get_db().commit()
+    text = client.get(
+        f"/students/{student_id}/employment/reports/{report_id}"
+    ).get_data(as_text=True)
+    assert "路径：专业推荐" in text
+    assert "公开招聘岗位抽样" in text
+    assert "公开招聘样本，不代表全市场" in text
+    assert "真实数据" in text
+    assert "工程能力提升与项目协同。典型路径，不承诺固定年限、薪资或必然晋升。" in text
+    assert "不应出现在冻结报告中" not in text
 
 
 def test_generation_rolls_back_when_readiness_changes(app, monkeypatch):
