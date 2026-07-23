@@ -1,4 +1,16 @@
 <section class="panel">
-  <div class="panel-header"><div><h2>市场情报</h2><p class="muted">市场快照来自后台受控测试数据。</p></div></div>
+  <div class="panel-header"><div><h2>市场情报</h2><p class="muted">市场快照按来源、证据、责任人与复核要求治理；每条数据均保留类型标识。</p></div></div>
   {% if workspace.market_snapshots %}{% for item in workspace.market_snapshots %}<article class="subsection"><h3>{{ item.record.job_name }} · {{ item.record.region }}</h3><p>{{ item.record.evidence_summary }}</p><p class="evidence-meta muted">样本量：{{ item.record.sample_size }}；复核：{{ item.record.next_check_at }}；限制：{{ item.record.limitation_note }}</p>{% for group, rows in item.breakdowns.items() if rows %}<h4>{{ group }}</h4><ul class="bar-list">{% for row in rows %}<li><span>{{ row.label }}</span><div class="skill-gap-bar gap-bar" role="img" aria-label="{{ row.label }}{{ row.value }}{{ row.unit }}"><i style="width: {{ row.bar_percent }}%"></i><span style="width: {{ row.bar_percent }}%"></span></div><em>{{ row.value }}{{ row.unit }}</em></li>{% endfor %}</ul><div class="table-wrap"><table class="employment-chart-table"><thead><tr><th>维度</th><th>数值</th><th>样本量</th></tr></thead><tbody>{% for row in rows %}<tr><td>{{ row.label }}</td><td>{{ row.value }}{{ row.unit }}</td><td>{{ row.sample_size }}</td></tr>{% endfor %}</tbody></table></div>{% endfor %}</article>{% endfor %}{% else %}<p class="empty">当前目标岗位暂无已审核且未过期的市场快照。</p>{% endif %}
 </section>
+{% if workspace.career_positioning.selected_job %}
+<section class="panel evidence-panel">
+  <div class="panel-header"><div><h2>{{ workspace.career_positioning.selected_job.name }}的个人计划证据</h2><p class="muted">仅展示满足筛选条件的已审核真实市场快照。</p></div></div>
+  {% if workspace.career_positioning.selected_job.market_snapshots %}
+    {% for item in workspace.career_positioning.selected_job.market_snapshots %}
+      <article class="subsection"><h3>{{ item.record.region }} · {{ item.record.period_end }}</h3><p><strong>{{ item.record.salary_min // 1000 if item.record.salary_min is not none else '—' }}~{{ item.record.salary_max // 1000 if item.record.salary_max is not none else '—' }} k/月</strong> · 样本量 {{ item.record.sample_size }} · 数据类型 {{ item.record.data_classification }}</p><p class="muted">{{ item.record.evidence_summary }}；复核日期：{{ item.record.next_check_at }}</p></article>
+    {% endfor %}
+  {% else %}<p class="empty">暂无符合当前筛选条件的真实市场证据。</p>{% endif %}
+  {% if workspace.career_positioning.selected_job.skills %}<h3>已审核核心技能</h3><p>{% for skill in workspace.career_positioning.selected_job.skills if skill.importance_level == '核心' %}{{ skill.skill_name }}{% if not loop.last %}、{% endif %}{% else %}暂无当前已审核核心技能。{% endfor %}</p>{% endif %}
+  {% if workspace.career_positioning.selected_job.market_snapshots and workspace.career_positioning.selected_job.development_direction %}<p><strong>已审核发展方向：</strong>{{ workspace.career_positioning.selected_job.development_direction }}</p>{% endif %}
+</section>
+{% endif %}

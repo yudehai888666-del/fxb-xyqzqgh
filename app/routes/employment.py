@@ -45,9 +45,13 @@ def workspace(student_id):
     if tab not in TABS:
         abort(404)
     can_edit = g.current_user and g.current_user["role"] in ("admin", "teacher")
+    career_filters = {
+        key: request.args.get(key, "")
+        for key in ("job_id", "city", "minimum_salary", "degree", "experience")
+    }
     return render_template(
         "employment/workspace.html",
-        workspace=employment_analysis.build_workspace(student_id),
+        workspace=employment_analysis.build_workspace(student_id, career_filters),
         active_tab=tab,
         active_partial=TABS[tab],
         available_jobs=repositories.list_published_jobs(),
@@ -78,8 +82,22 @@ def save_target(student_id):
         row["id"] for row in repositories.list_published_jobs()
     }:
         abort(400)
-    repositories.upsert_student_job_target(student_id, request.form, g.current_user["id"])
-    _audit("set_student_job_target", student_id, f"job={job_id},priority={priority}")
+    path_mode = request.form.get("path_mode", "专业推荐")
+    if path_mode not in ("专业推荐", "个人计划"):
+        abort(400)
+    note = request.form.get("target_note", "").strip()
+    data = request.form.copy()
+    data["target_note"] = f"路径：{path_mode}" + (f"；{note}" if note else "")
+    repositories.upsert_student_job_target(student_id, data, g.current_user["id"])
+    _audit("set_student_job_target", student_id, f"job={job_id},priority={priority},path={path_mode}")
+    if path_mode == "个人计划":
+        return redirect(url_for(
+            "employment.workspace", student_id=student_id, tab="market", job_id=job_id,
+            city=request.form.get("city", "").strip(),
+            minimum_salary=request.form.get("minimum_salary", "").strip(),
+            degree=request.form.get("degree", "").strip(),
+            experience=request.form.get("experience", "").strip(),
+        ))
     return redirect(url_for("employment.workspace", student_id=student_id, tab="targets"))
 
 

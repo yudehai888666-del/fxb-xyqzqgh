@@ -1696,6 +1696,76 @@ def list_student_job_targets(student_id):
     ).fetchall()
 
 
+def list_ranked_major_job_candidates(student_id, student_major, limit=3):
+    """Return governed, current real-market roles linked to a student's major."""
+    del student_id  # The caller owns student access; ranking is based on the recorded major.
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("岗位推荐数量无效") from exc
+    if limit < 1:
+        return []
+    return get_db().execute(
+        """
+        WITH current_real_snapshots AS (
+            SELECT ms.*
+            FROM employment_market_snapshots ms
+            JOIN intelligence_sources source ON source.id = ms.source_id
+            WHERE ms.status = '已发布'
+              AND ms.data_classification = '真实数据'
+              AND ms.sample_size > 0
+              AND source.is_active = 1
+              AND date(ms.next_check_at) = ms.next_check_at
+              AND date(ms.next_check_at) >= date('now')
+        ), latest_real_snapshots AS (
+            SELECT current.*
+            FROM current_real_snapshots current
+            WHERE NOT EXISTS (
+                SELECT 1 FROM current_real_snapshots newer
+                WHERE newer.job_id = current.job_id
+                  AND (newer.period_end > current.period_end
+                       OR (newer.period_end = current.period_end AND newer.id > current.id))
+            )
+        ), current_skill_links AS (
+            SELECT js.job_id,
+                   MAX(CASE js.confidence_level
+                       WHEN '高' THEN 3 WHEN '中' THEN 2 WHEN '低' THEN 1 ELSE 0 END
+                   ) AS confidence_rank,
+                   GROUP_CONCAT(CASE WHEN js.importance_level = '核心' THEN skill.name END, '、') AS core_skills
+            FROM job_skill_links js
+            JOIN knowledge_skills skill ON skill.id = js.skill_id
+            WHERE js.status = '已发布'
+              AND skill.status = '已发布'
+              AND date(js.next_check_at) = js.next_check_at
+              AND date(js.next_check_at) >= date('now')
+            GROUP BY js.job_id
+        )
+        SELECT job.id AS job_id, job.name AS job_name, job.industry_name,
+               job.development_direction, link.relevance_level,
+               snapshot.region, snapshot.sample_size, snapshot.period_end,
+               snapshot.salary_min, snapshot.salary_median, snapshot.salary_max,
+               skills.core_skills,
+               CASE skills.confidence_rank
+                   WHEN 3 THEN '高' WHEN 2 THEN '中' WHEN 1 THEN '低' ELSE '' END AS confidence_level
+        FROM knowledge_majors major
+        JOIN major_job_links link ON link.major_id = major.id
+        JOIN knowledge_jobs job ON job.id = link.job_id AND job.status = '已发布'
+        JOIN latest_real_snapshots snapshot ON snapshot.job_id = job.id
+        JOIN current_skill_links skills ON skills.job_id = job.id
+        WHERE major.name = ?
+        ORDER BY CASE link.relevance_level
+                     WHEN '高度相关' THEN 0 WHEN '相关' THEN 1 WHEN '可转入' THEN 2
+                     WHEN '核心' THEN 0 ELSE 3 END,
+                 skills.confidence_rank DESC,
+                 snapshot.sample_size DESC,
+                 snapshot.period_end DESC,
+                 job.name ASC
+        LIMIT ?
+        """,
+        (student_major, limit),
+    ).fetchall()
+
+
 def upsert_student_skill_assessment(student_id, data, assessed_by=None):
     level = int(data.get("current_level", 0))
     if level < 0 or level > 4:

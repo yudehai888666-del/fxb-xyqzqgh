@@ -1206,6 +1206,79 @@ textarea {
   list-style: none;
 }
 
+.path-mode-fieldset {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.path-mode-fieldset legend {
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.segmented-control {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(110px, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.segmented-control input {
+  position: absolute;
+  opacity: 0;
+}
+
+.segmented-control label {
+  cursor: pointer;
+  margin: 0;
+  padding: 9px 14px;
+  text-align: center;
+}
+
+.segmented-control label + input + label {
+  border-left: 1px solid var(--line);
+}
+
+.segmented-control input:checked + label {
+  background: var(--primary-dark);
+  color: #fff;
+}
+
+.segmented-control input:focus-visible + label {
+  outline: 3px solid #97c3f7;
+  outline-offset: -3px;
+}
+
+.path-mode-panel {
+  border-left: 3px solid var(--accent);
+  padding: 4px 0 4px 14px;
+}
+
+.path-mode-panel h3,
+.evidence-panel h2 {
+  margin-top: 0;
+}
+
+.compact-filter-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.warning-list {
+  color: #8a4a08;
+  margin: 0;
+  padding-left: 20px;
+}
+
+@media (max-width: 560px) {
+  .segmented-control {
+    display: grid;
+    width: 100%;
+  }
+}
+
 .explore-skill-expand summary::-webkit-details-marker { display: none; }
 
 .explore-skill-expand[open] summary { border-bottom: 1px solid var(--line); }

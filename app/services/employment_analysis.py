@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Any, Mapping, Optional
 
 from app import employment_repository, repositories
 from app.services import student_goals
@@ -37,6 +38,85 @@ def _salary_label(row):
     return f"{row['salary_min'] // 1000}~{row['salary_max'] // 1000} k/月"
 
 
+def _current_real_snapshots(job_id, filters):
+    snapshots = []
+    active_sources = {}
+    minimum_salary = filters.get("minimum_salary", "").strip()
+    try:
+        minimum_salary_value = int(minimum_salary) if minimum_salary else None
+    except ValueError:
+        minimum_salary_value = None
+    for row in employment_repository.list_market_snapshots(job_id):
+        if (row["status"] != "已发布" or row["data_classification"] != "真实数据"
+                or row["sample_size"] <= 0 or row["next_check_at"] < date.today().isoformat()):
+            continue
+        source_id = row["source_id"]
+        if source_id not in active_sources:
+            source = repositories.get_intelligence_source(source_id)
+            active_sources[source_id] = bool(source and source["is_active"])
+        if not active_sources[source_id]:
+            continue
+        if filters.get("city", "").strip() and row["region"] != filters["city"].strip():
+            continue
+        if minimum_salary_value and (row["salary_max"] or 0) < minimum_salary_value:
+            continue
+        breakdowns = _breakdown_groups(row)
+        for field, dimension in (("degree", "学历"), ("experience", "经验")):
+            requested = filters.get(field, "").strip()
+            if requested and not any(item["label"] == requested for item in breakdowns[dimension]):
+                break
+        else:
+            snapshots.append({"record": row, "breakdowns": breakdowns})
+    return snapshots
+
+
+def build_career_positioning(
+        student_id: int, filters: Optional[Mapping[str, str]] = None
+) -> dict[str, Any]:
+    """Build teacher-facing career options from reviewed, current real evidence."""
+    require_active_employment_goal(student_id)
+    student = repositories.get_student(student_id)
+    if student is None:
+        raise ValueError("学生不存在")
+    normalized_filters = {key: str(value or "") for key, value in (filters or {}).items()}
+    candidates = [dict(row) for row in repositories.list_ranked_major_job_candidates(
+        student_id, student.major, limit=3
+    )]
+    warnings = []
+    if not candidates:
+        warnings.append("该专业暂无同时具备已审核真实市场数据与当前技能证据的推荐岗位。")
+
+    selected_job = None
+    selected_job_id = normalized_filters.get("job_id", "").strip()
+    if selected_job_id:
+        try:
+            selected_job = next(
+                (dict(row) for row in repositories.list_published_jobs()
+                 if row["id"] == int(selected_job_id)),
+                None,
+            )
+        except ValueError:
+            selected_job = None
+        if selected_job is None:
+            warnings.append("个人计划选择的岗位未发布或不存在。")
+    personal_snapshots = _current_real_snapshots(
+        selected_job["id"], normalized_filters
+    ) if selected_job else []
+    if selected_job and not personal_snapshots:
+        warnings.append("该个人计划暂无符合条件的已审核真实市场证据。")
+    if selected_job:
+        selected_job["skills"] = [
+            dict(row) for row in repositories.list_job_skill_requirements(selected_job["id"])
+        ]
+        selected_job["market_snapshots"] = personal_snapshots
+    return {
+        "professional_candidates": candidates,
+        "selected_job": selected_job,
+        "data_warnings": warnings,
+        "filters": normalized_filters,
+    }
+
+
 def _explore_jobs(student, target_ids, assessments):
     assessment_map = {row["skill_id"]: row for row in assessments}
     jobs = []
@@ -64,7 +144,7 @@ def _explore_jobs(student, target_ids, assessments):
     return jobs
 
 
-def build_workspace(student_id):
+def build_workspace(student_id, career_filters=None):
     profile = require_active_employment_goal(student_id)
     student = repositories.get_student(student_id)
     matching = build_student_intelligence_report(student)
@@ -99,6 +179,7 @@ def build_workspace(student_id):
         "analysis_draft": employment_repository.get_analysis_draft(student_id),
         "skill_assessments": matching["assessments"],
         "explore": _explore_jobs(student, target_ids, matching["assessments"]),
+        "career_positioning": build_career_positioning(student_id, career_filters),
         "readiness": report_readiness(student_id),
     }
 
