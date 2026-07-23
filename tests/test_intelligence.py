@@ -494,7 +494,11 @@ def test_collaborator_can_view_market_snapshots_but_not_create(tmp_path):
         create_user("collaborator", "collab")
 
     login(client, "collab")
-    assert client.get("/employment-market").status_code == 200
+    response = client.get("/employment-market")
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert "就业市场快照按来源、证据、责任人和复核要求治理" in page
+    assert "当前仅录入合成测试样本" not in page
     assert client.post("/employment-market", data={}).status_code == 403
 
 

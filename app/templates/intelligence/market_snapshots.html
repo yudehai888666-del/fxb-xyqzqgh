@@ -2,7 +2,7 @@
 {% block title %}就业市场快照 - 学业规划工作台{% endblock %}
 {% block content %}
   <section class="page-heading">
-    <div><p class="eyebrow">测试数据治理</p><h1>就业市场快照</h1><p class="muted">当前仅录入合成测试样本；审核发布后才可供后续就业情报模块引用。</p></div>
+    <div><p class="eyebrow">就业数据治理</p><h1>就业市场快照</h1><p class="muted">就业市场快照按来源、证据、责任人和复核要求治理；审核发布后才可供后续就业情报模块引用。</p></div>
     {% if current_user and current_user['role'] in ('admin','teacher') %}<a class="button" href="{{ url_for('intelligence.market_snapshots', new=1) }}">录入市场快照</a>{% endif %}
     {% if current_user and current_user['role'] == 'admin' %}<a class="button secondary" href="{{ url_for('intelligence.market_collection_form') }}">采集公开岗位数据</a>{% endif %}
   </section>
