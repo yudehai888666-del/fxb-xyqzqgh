@@ -128,6 +128,74 @@ def test_teacher_saves_self_chosen_target_with_path_reason(tmp_path):
     assert target["target_note"].startswith("路径：个人计划")
 
 
+def test_personal_market_view_hides_legacy_test_snapshots(client, app):
+    with app.app_context():
+        student_id, job_ids = create_shipbuilding_student_with_four_current_jobs()
+        test_snapshot_id = employment_repository.create_market_snapshot(
+            {
+                "job_id": job_ids[0], "region": "大连", "period_start": "2026-07-01",
+                "period_end": "2026-07-20", "observed_posting_count": 10,
+                "sample_size": 10, "salary_min": 5000, "salary_median": 6000,
+                "salary_max": 7000, "source_id": 1, "evidence_summary": "仅供测试的市场快照",
+                "limitation_note": "测试", "owner_user_id": 1, "reviewer_user_id": 1,
+                "next_check_at": "2026-10-01", "data_classification": "测试数据",
+            }, [], 1,
+        )
+        employment_repository.submit_market_snapshot(test_snapshot_id)
+        employment_repository.review_market_snapshot(test_snapshot_id, "已发布")
+        repositories.upsert_student_job_target(
+            student_id, {"job_id": job_ids[0], "priority": 1}, 1
+        )
+    page = client.get(f"/students/{student_id}/employment?tab=market&job_id={job_ids[0]}")
+    text = page.get_data(as_text=True)
+    assert page.status_code == 200
+    assert "仅供测试的市场快照" not in text
+    assert "数据类型 真实数据" in text
+
+
+def test_professional_recommendation_handles_missing_salary_range(tmp_path):
+    auth_app = make_auth_app(tmp_path, "professional-missing-salary")
+    client = auth_app.test_client()
+    with auth_app.app_context():
+        create_login_user("admin", "professional-salary-admin")
+        student_id, job_ids = create_shipbuilding_student_with_four_current_jobs()
+        get_db().execute(
+            """UPDATE employment_market_snapshots
+               SET salary_min = NULL, salary_median = NULL, salary_max = NULL
+               WHERE job_id = ? AND data_classification = '真实数据'""",
+            (job_ids[0],),
+        )
+        get_db().commit()
+    login(client, "professional-salary-admin")
+    page = client.get(f"/students/{student_id}/employment?tab=targets")
+    assert page.status_code == 200
+    assert "暂无薪资数据" in page.get_data(as_text=True)
+
+
+def test_personal_minimum_salary_filters_on_salary_floor(app):
+    with app.app_context():
+        student_id, job_ids = create_shipbuilding_student_with_four_current_jobs()
+        result = employment_analysis.build_career_positioning(
+            student_id, {"job_id": str(job_ids[0]), "minimum_salary": "10000"}
+        )
+    assert result["selected_job"]["market_snapshots"] == []
+
+
+def test_professional_target_rejects_job_outside_ranked_candidates(tmp_path):
+    auth_app = make_auth_app(tmp_path, "professional-target-validation")
+    client = auth_app.test_client()
+    with auth_app.app_context():
+        create_login_user("admin", "professional-target-admin")
+        student_id, _ = create_shipbuilding_student_with_four_current_jobs()
+        outside_job_id, _ = create_published_job_and_skill("非关联公开岗位", "非关联技能")
+    login(client, "professional-target-admin")
+    response = client.post(
+        f"/students/{student_id}/employment/targets",
+        data={"job_id": outside_job_id, "priority": 1, "path_mode": "专业推荐"},
+    )
+    assert response.status_code == 400
+
+
 def _create_explore_records(app):
     with app.app_context():
         actor_id = create_user("explore-admin", "admin")

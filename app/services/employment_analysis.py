@@ -58,7 +58,7 @@ def _current_real_snapshots(job_id, filters):
             continue
         if filters.get("city", "").strip() and row["region"] != filters["city"].strip():
             continue
-        if minimum_salary_value and (row["salary_max"] or 0) < minimum_salary_value:
+        if minimum_salary_value and (row["salary_min"] or 0) < minimum_salary_value:
             continue
         breakdowns = _breakdown_groups(row)
         for field, dimension in (("degree", "学历"), ("experience", "经验")):

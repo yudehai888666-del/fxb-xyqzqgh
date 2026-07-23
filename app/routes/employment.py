@@ -73,6 +73,9 @@ def explore_data(student_id):
 @role_required("admin", "teacher")
 def save_target(student_id):
     _guard(student_id)
+    path_mode = request.form.get("path_mode", "个人计划")
+    if path_mode not in ("专业推荐", "个人计划"):
+        abort(400)
     try:
         job_id = int(request.form.get("job_id", ""))
         priority = int(request.form.get("priority", ""))
@@ -82,9 +85,15 @@ def save_target(student_id):
         row["id"] for row in repositories.list_published_jobs()
     }:
         abort(400)
-    path_mode = request.form.get("path_mode", "专业推荐")
-    if path_mode not in ("专业推荐", "个人计划"):
-        abort(400)
+    if path_mode == "专业推荐":
+        student = repositories.get_student(student_id)
+        candidate_ids = {
+            row["job_id"] for row in repositories.list_ranked_major_job_candidates(
+                student_id, student.major
+            )
+        }
+        if job_id not in candidate_ids:
+            abort(400)
     note = request.form.get("target_note", "").strip()
     data = request.form.copy()
     data["target_note"] = f"路径：{path_mode}" + (f"；{note}" if note else "")
