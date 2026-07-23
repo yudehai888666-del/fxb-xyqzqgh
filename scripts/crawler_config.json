@@ -4,6 +4,8 @@
       "name": "猎聘",
       "url": "https://www.liepin.com",
       "source_kind": "招聘平台",
+      "collection_mode": "公开网页",
+      "allowed_public_pages": ["/zhaopin/"],
       "search_url_template": "https://www.liepin.com/zhaopin/?key={keyword}&city={city_code}&currentPage={page}",
       "enabled": true
     },
@@ -11,13 +13,17 @@
       "name": "拉勾",
       "url": "https://www.lagou.com",
       "source_kind": "招聘平台",
+      "collection_mode": "公开网页",
+      "allowed_public_pages": ["/wn/jobs"],
       "search_url_template": "https://www.lagou.com/wn/jobs?kd={keyword}&city={city}",
       "enabled": false
     },
     {
       "name": "智联招聘",
-      "url": "https://www.zhaopin.com",
+      "url": "https://sou.zhaopin.com",
       "source_kind": "招聘平台",
+      "collection_mode": "公开网页",
+      "allowed_public_pages": ["/"],
       "search_url_template": "https://sou.zhaopin.com/?kw={keyword}&jl={city}",
       "enabled": false
     }

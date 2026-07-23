@@ -24,7 +24,7 @@ import time
 from pathlib import Path
 from statistics import median
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
 
 try:
@@ -46,6 +46,14 @@ BREAKDOWN_TYPES = ("学历", "经验", "热门技能", "地区")
 LIMITATION_NOTE = (
     "数据来源为公开招聘平台，样本为当前在招岗位，不代表全市场水平；"
     "薪资为挂牌价，实际到手受学历、经验、公司规模影响。"
+)
+APPROVED_PLATFORM_FIELDS = (
+    "enabled",
+    "url",
+    "source_kind",
+    "collection_mode",
+    "allowed_public_pages",
+    "search_url_template",
 )
 
 
@@ -81,13 +89,6 @@ def _connect(db_path: str) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
-
-
-def _first_enabled_platform(config: dict[str, Any]) -> dict[str, Any]:
-    for platform in config.get("platforms", []):
-        if platform.get("enabled"):
-            return platform
-    raise ValueError("crawler_config.json 中没有启用的平台")
 
 
 def _resolve_admin_user_id(conn: sqlite3.Connection, preferred_id: int) -> int:
@@ -139,38 +140,24 @@ def _build_headers(config: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def _http_get(url: str, config: dict[str, Any], logger: logging.Logger) -> tuple[int, str]:
+def _http_get(
+    url: str, config: dict[str, Any], logger: logging.Logger
+) -> tuple[int, str, str]:
     try:
         import requests  # type: ignore
     except ImportError:  # pragma: no cover - exercised only when requests is absent.
         requests = None
 
-    for attempt in range(1, 4):
-        try:
-            if requests is not None:
-                response = requests.get(
-                    url, headers=_build_headers(config), timeout=15
-                )
-                status_code = response.status_code
-                text = response.text
-            else:
-                request = Request(url, headers=_build_headers(config))
-                with urlopen(request, timeout=15) as response:
-                    status_code = response.status
-                    text = response.read().decode("utf-8", errors="ignore")
-            if status_code in (429, 503):
-                logger.warning("rate_limited url=%s status=%s attempt=%s", url, status_code, attempt)
-                time.sleep(15)
-                continue
-            if "captcha" in text.lower() or "验证" in text:
-                logger.warning("captcha_detected url=%s status=%s", url, status_code)
-                return status_code, ""
-            return status_code, text
-        except Exception as exc:  # pragma: no cover - network behavior varies.
-            logger.exception("request_failed url=%s attempt=%s error=%s", url, attempt, exc)
-            if attempt < 3:
-                time.sleep(15)
-    return 0, ""
+    try:
+        if requests is not None:
+            response = requests.get(url, headers=_build_headers(config), timeout=15)
+            return response.status_code, response.text, ""
+        request = Request(url, headers=_build_headers(config))
+        with urlopen(request, timeout=15) as response:
+            return response.status, response.read().decode("utf-8", errors="ignore"), ""
+    except Exception as exc:  # pragma: no cover - network behavior varies.
+        logger.exception("request_failed url=%s error=%s", url, exc)
+        return 0, "", f"请求失败：{_strip_text(exc)}"
 
 
 def _strip_text(value: Any) -> str:
@@ -218,6 +205,7 @@ def _parse_json_posts(html: str) -> list[dict[str, str]]:
                     continue
                 posts.append(
                     {
+                        "company": _find_first_text(item, ("company", "companyName", "brandName", "compName")),
                         "title": title,
                         "salary": salary,
                         "education": _find_first_text(item, ("education", "eduLevel", "degree")),
@@ -250,12 +238,16 @@ def _parse_html_posts(html: str) -> list[dict[str, str]]:
         text = _strip_text(card.get_text(" "))
         if not text:
             continue
+        company_node = card.select_one(
+            ".company-name, .company-name a, .company-info a, [data-company]"
+        )
         salary_match = re.search(
             r"(\d+(?:\.\d+)?\s*[kK千万][^\s，,;；]*)|(面议|薪资保密|保密)",
             text,
         )
         posts.append(
             {
+                "company": _strip_text(company_node.get_text(" ")) if company_node else "",
                 "title": _strip_text(
                     (card.select_one(".job-title-box a, .job-name, .position-name, a") or card).get_text(" ")
                 ),
@@ -276,18 +268,121 @@ def _parse_posts(html: str) -> list[dict[str, str]]:
     return _parse_html_posts(html)
 
 
-def fetch_platform_posts(
+def _validate_platform(platform: dict[str, Any]) -> None:
+    missing = [field for field in APPROVED_PLATFORM_FIELDS if field not in platform]
+    if missing:
+        raise ValueError(f"招聘平台配置缺少字段：{'、'.join(missing)}")
+    if not isinstance(platform["enabled"], bool):
+        raise ValueError("招聘平台配置 enabled 必须为布尔值")
+    if not all(_strip_text(platform[field]) for field in ("url", "source_kind", "collection_mode", "search_url_template")):
+        raise ValueError("招聘平台配置包含空字段")
+    allowed_pages = platform["allowed_public_pages"]
+    if not isinstance(allowed_pages, list) or not allowed_pages or not all(
+        isinstance(page, str) and page.startswith("/") for page in allowed_pages
+    ):
+        raise ValueError("招聘平台配置 allowed_public_pages 无效")
+
+
+def _approved_platforms(
+    conn: sqlite3.Connection, config: dict[str, Any]
+) -> list[dict[str, Any]]:
+    approved: list[dict[str, Any]] = []
+    for platform in config.get("platforms", []):
+        _validate_platform(platform)
+        if not platform["enabled"]:
+            continue
+        source = conn.execute(
+            """
+            SELECT id FROM intelligence_sources
+            WHERE url = ? AND source_kind = ? AND collection_mode = ?
+              AND is_active = 1 AND TRIM(compliance_note) <> ''
+            """,
+            (
+                platform["url"],
+                platform["source_kind"],
+                platform["collection_mode"],
+            ),
+        ).fetchone()
+        if source is None:
+            raise ValueError(
+                f"平台{platform.get('name', platform['url'])}缺少已启用且具备合规说明的数据源"
+            )
+        approved.append({**platform, "source_id": int(source["id"])})
+    if not approved:
+        raise ValueError("crawler_config.json 中没有启用的平台")
+    return approved
+
+
+def _is_allowed_public_page(platform: dict[str, Any], url: str) -> bool:
+    configured = urlsplit(platform["url"])
+    candidate = urlsplit(url)
+    return (
+        configured.scheme == candidate.scheme
+        and configured.netloc == candidate.netloc
+        and any(candidate.path.startswith(path) for path in platform["allowed_public_pages"])
+    )
+
+
+def _page_title(html: str) -> str:
+    if BeautifulSoup is not None:
+        soup = BeautifulSoup(html, "html.parser")
+        if soup.title:
+            return _strip_text(soup.title.get_text(" "))[:200]
+    match = re.search(r"<title[^>]*>(.*?)</title>", html, flags=re.I | re.S)
+    return _strip_text(match.group(1))[:200] if match else ""
+
+
+def _capture_payload(
+    source_id: int,
+    status_code: int,
+    html: str,
+    page_posts: list[dict[str, str]],
+    error_message: str = "",
+) -> dict[str, Any]:
+    raw = html.encode("utf-8")
+    excerpt = (
+        f"公开岗位列表解析到 {len(page_posts)} 条样本；仅保存聚合采集元数据，不保存职位描述。"
+        if not error_message
+        else f"公开页面采集失败：{error_message[:300]}"
+    )
+    return {
+        "source_id": source_id,
+        "http_status": status_code or None,
+        "content_hash": hashlib.sha256(raw).hexdigest(),
+        "page_title": _page_title(html),
+        "content_excerpt": excerpt,
+        "content_bytes": len(raw),
+        "error_message": error_message[:500],
+    }
+
+
+def _page_stop_reason(status_code: int, html: str, request_error: str) -> str:
+    if request_error:
+        return request_error
+    if status_code in (429, 503):
+        return f"HTTP {status_code}，停止当前页面采集"
+    lowered = html.lower()
+    if "captcha" in lowered or "验证" in html:
+        return "检测到验证码页面，停止当前页面采集"
+    if "login" in lowered or "登录" in html:
+        return "检测到登录页面，停止当前页面采集"
+    if status_code >= 400:
+        return f"HTTP {status_code}，停止当前页面采集"
+    return ""
+
+
+def fetch_approved_posts(
     job_name: str,
     city: str,
     max_pages: int,
     config: dict[str, Any],
     logger: logging.Logger,
-) -> list[dict[str, str]]:
+    approved_platforms: list[dict[str, Any]],
+) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
     posts: list[dict[str, str]] = []
+    source_snapshots: list[dict[str, Any]] = []
     city_codes = config.get("city_codes", {})
-    for platform in config.get("platforms", []):
-        if not platform.get("enabled"):
-            continue
+    for platform in approved_platforms:
         for page in range(max_pages):
             url = platform["search_url_template"].format(
                 keyword=quote(job_name),
@@ -295,21 +390,43 @@ def fetch_platform_posts(
                 city_code=city_codes.get(city, city),
                 page=page,
             )
-            status_code, html = _http_get(url, config, logger)
-            page_posts = _parse_posts(html) if html else []
+            if not _is_allowed_public_page(platform, url):
+                source_snapshots.append(
+                    _capture_payload(
+                        platform["source_id"], 0, "", [],
+                        "配置生成了未获批准的公开页面",
+                    )
+                )
+                break
+            status_code, html, request_error = _http_get(url, config, logger)
+            page_posts: list[dict[str, str]] = []
+            stop_reason = _page_stop_reason(status_code, html, request_error)
+            if not stop_reason:
+                try:
+                    page_posts = _parse_posts(html)
+                except Exception as exc:
+                    stop_reason = f"页面解析失败：{_strip_text(exc)}"
+            source_snapshots.append(
+                _capture_payload(
+                    platform["source_id"], status_code, html, page_posts, stop_reason
+                )
+            )
+            if stop_reason:
+                logger.warning("page_stopped url=%s reason=%s", url, stop_reason)
+                break
             for post in page_posts:
                 post.setdefault("platform", platform["name"])
             posts.extend(page_posts)
             logger.info("page_fetched url=%s status=%s valid_items=%s", url, status_code, len(page_posts))
             time.sleep(random.uniform(1.5, 3.5))
-        if posts:
-            return posts
-    return posts
+    return posts, source_snapshots
 
 
 def parse_salary_to_monthly(salary_text: str) -> tuple[int, int] | None:
     text = _strip_text(salary_text).lower()
-    if not text or any(token in text for token in ("面议", "保密")):
+    if not text or any(
+        token in text for token in ("13薪", "年终", "股权", "期权", "面议", "保密")
+    ):
         return None
     multiplier = 1000
     if "万" in text and "k" not in text:
@@ -372,6 +489,8 @@ def _normalize_post(post: dict[str, Any], config: dict[str, Any]) -> dict[str, A
     )
     city = _strip_text(post.get("city")) or _extract_city(text)
     return {
+        "company": _strip_text(post.get("company")),
+        "title": _strip_text(post.get("title")),
         "salary_text": _strip_text(post.get("salary")),
         "salary": parse_salary_to_monthly(_strip_text(post.get("salary"))),
         "education": _extract_education(education, config.get("education_map", {})),
@@ -379,6 +498,40 @@ def _normalize_post(post: dict[str, Any], config: dict[str, Any]) -> dict[str, A
         "city": _extract_city(city),
         "description": text,
     }
+
+
+def deduplicate_posts(
+    posts: list[dict[str, Any]], config: dict[str, Any]
+) -> list[dict[str, Any]]:
+    unique: list[dict[str, Any]] = []
+    fingerprints: set[str] = set()
+    for post in posts:
+        normalized = _normalize_post(post, config)
+        fingerprint = hashlib.sha256(
+            "\x1f".join(
+                normalized[field].casefold()
+                for field in ("company", "title", "city", "salary_text", "description")
+            ).encode("utf-8")
+        ).hexdigest()
+        if fingerprint not in fingerprints:
+            fingerprints.add(fingerprint)
+            unique.append(post)
+    return unique
+
+
+def confidence_for(
+    source_count: int, sample_size: int, period_end: str | date, today: date
+) -> str:
+    try:
+        end_date = period_end if isinstance(period_end, date) else date.fromisoformat(period_end)
+    except ValueError:
+        return "低"
+    age_days = (today - end_date).days
+    if age_days < 0 or age_days > 31 or source_count < 1 or sample_size < 1:
+        return "低"
+    if source_count >= 2 and sample_size >= 20:
+        return "高"
+    return "中"
 
 
 def _job_keywords(job_family: str, config: dict[str, Any]) -> list[str]:
@@ -466,63 +619,65 @@ def aggregate_posts(
     }
 
 
-def _ensure_source(
+def _record_source_snapshot(
     conn: sqlite3.Connection,
-    platform: dict[str, Any],
-    owner_user_id: int,
-    reviewer_user_id: int,
+    data: dict[str, Any],
+    created_by: int,
 ) -> int:
     row = conn.execute(
-        "SELECT id FROM intelligence_sources WHERE url = ?",
-        (platform["url"],),
+        "SELECT last_content_hash FROM intelligence_sources WHERE id = ?",
+        (data["source_id"],),
     ).fetchone()
-    if row:
-        source_id = int(row["id"])
-        conn.execute(
-            """
-            UPDATE intelligence_sources
-            SET name = ?, source_kind = ?, collection_mode = ?, update_frequency = ?,
-                owner_user_id = ?, reviewer_user_id = ?, compliance_note = ?,
-                is_active = 1, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-            """,
-            (
-                platform["name"],
-                platform.get("source_kind", "招聘平台"),
-                "公开网页",
-                "每月",
-                owner_user_id,
-                reviewer_user_id,
-                "仅采集公开招聘列表信息，用于内部测试数据草稿，发布前需人工审核。",
-                source_id,
-            ),
-        )
-        return source_id
+    if row is None:
+        raise ValueError("source snapshot references an unknown source")
+    content_hash = _strip_text(data.get("content_hash"))
+    error_message = _strip_text(data.get("error_message"))[:500]
+    if error_message:
+        change_status = "采集失败"
+    elif not row["last_content_hash"]:
+        change_status = "首次采集"
+    elif content_hash != row["last_content_hash"]:
+        change_status = "有变化"
+    else:
+        change_status = "无变化"
     cursor = conn.execute(
         """
-        INSERT INTO intelligence_sources (
-            name, url, source_kind, collection_mode, update_frequency,
-            owner_user_id, reviewer_user_id, compliance_note, is_active, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+        INSERT INTO intelligence_source_snapshots (
+            source_id, http_status, content_hash, page_title, content_excerpt,
+            content_bytes, is_changed, error_message, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            platform["name"],
-            platform["url"],
-            platform.get("source_kind", "招聘平台"),
-            "公开网页",
-            "每月",
-            owner_user_id,
-            reviewer_user_id,
-            "仅采集公开招聘列表信息，用于内部测试数据草稿，发布前需人工审核。",
-            owner_user_id,
+            int(data["source_id"]),
+            data.get("http_status"),
+            content_hash,
+            _strip_text(data.get("page_title"))[:200],
+            _strip_text(data.get("content_excerpt"))[:500],
+            int(data.get("content_bytes") or 0),
+            int(bool(content_hash and row["last_content_hash"] and content_hash != row["last_content_hash"])),
+            error_message,
+            created_by,
         ),
     )
+    if error_message:
+        conn.execute(
+            """
+            UPDATE intelligence_sources SET last_fetch_at = CURRENT_TIMESTAMP,
+                last_change_status = ?, last_error = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (change_status, error_message, data["source_id"]),
+        )
+    else:
+        conn.execute(
+            """
+            UPDATE intelligence_sources SET last_fetch_at = CURRENT_TIMESTAMP,
+                last_content_hash = ?, last_change_status = ?, last_error = '',
+                updated_at = CURRENT_TIMESTAMP WHERE id = ?
+            """,
+            (content_hash, change_status, data["source_id"]),
+        )
     return int(cursor.lastrowid)
-
-
-def _content_hash(payload: dict[str, Any]) -> str:
-    content = json.dumps(payload, ensure_ascii=False, sort_keys=True)
-    return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
 def _insert_snapshot(
@@ -531,16 +686,17 @@ def _insert_snapshot(
     job_name: str,
     city: str,
     source_id: int,
+    source_snapshot_id: int,
     owner_user_id: int,
     reviewer_user_id: int,
     period_start: str,
     period_end: str,
     next_check_at: str,
     aggregate: dict[str, Any],
-    platform_name: str,
+    source_name: str,
 ) -> int:
     evidence_summary = (
-        f"通过{platform_name}爬取，关键词\"{job_name}\"，城市\"{city}\"，"
+        f"通过{source_name}采集公开招聘列表，关键词\"{job_name}\"，城市\"{city}\"，"
         f"共采集{aggregate['sample_size']}条有效薪资数据，"
         f"统计周期{period_start}至{period_end}。"
     )
@@ -549,10 +705,10 @@ def _insert_snapshot(
         INSERT INTO employment_market_snapshots (
             job_id, region, period_start, period_end, observed_posting_count,
             sample_size, salary_min, salary_median, salary_max, currency,
-            salary_period, source_id, evidence_summary, limitation_note,
+            salary_period, source_id, source_snapshot_id, evidence_summary, limitation_note,
             data_classification, owner_user_id, reviewer_user_id, next_check_at,
             status, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'CNY', '月', ?, ?, ?, '测试数据', ?, ?, ?, '草稿', ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'CNY', '月', ?, ?, ?, ?, '真实数据', ?, ?, ?, '草稿', ?)
         """,
         (
             job_id,
@@ -565,6 +721,7 @@ def _insert_snapshot(
             aggregate["salary_median"],
             aggregate["salary_max"],
             source_id,
+            source_snapshot_id,
             evidence_summary,
             LIMITATION_NOTE,
             owner_user_id,
@@ -613,7 +770,6 @@ def crawl_and_store(
     if max_pages < 1:
         raise ValueError("max_pages 必须大于等于 1")
     config = load_config()
-    platform = _first_enabled_platform(config)
     logger = setup_logger(db_path)
     started_at = datetime.now().isoformat(timespec="seconds")
     logger.info("task_start job_name=%s city=%s started_at=%s", job_name, city, started_at)
@@ -626,6 +782,7 @@ def crawl_and_store(
         job = _get_job(conn, job_name)
         owner_id = _resolve_admin_user_id(conn, owner_user_id)
         reviewer_id = _resolve_admin_user_id(conn, reviewer_user_id)
+        approved_platforms = _approved_platforms(conn, config)
         existing = _existing_pending_snapshot(conn, int(job["id"]), city, period_start)
         if existing:
             logger.info(
@@ -641,13 +798,22 @@ def crawl_and_store(
                 "snapshot_id": int(existing["id"]),
             }
 
-    posts = fetch_platform_posts(job_name, city, max_pages, config, logger)
+    posts, source_payloads = fetch_approved_posts(
+        job_name, city, max_pages, config, logger, approved_platforms
+    )
+    posts = deduplicate_posts(posts, config)
     aggregate = aggregate_posts(posts, str(job["job_family"] or ""), config)
+    approved_source_ids = {platform["source_id"] for platform in approved_platforms}
 
     with closing(_connect(db_path)) as conn:
         try:
             conn.execute("BEGIN")
-            source_id = _ensure_source(conn, platform, owner_id, reviewer_id)
+            persisted_sources = []
+            for payload in source_payloads:
+                if payload.get("source_id") not in approved_source_ids:
+                    raise ValueError("采集结果关联了未批准的数据源")
+                snapshot_id = _record_source_snapshot(conn, payload, owner_id)
+                persisted_sources.append((snapshot_id, payload))
             existing = _existing_pending_snapshot(conn, int(job["id"]), city, period_start)
             if existing:
                 conn.rollback()
@@ -663,34 +829,55 @@ def crawl_and_store(
                     "job_id": int(job["id"]),
                     "snapshot_id": int(existing["id"]),
                 }
+            successful_sources = {
+                payload["source_id"]
+                for _, payload in persisted_sources
+                if payload.get("http_status") == 200 and not payload.get("error_message")
+            }
+            confidence_level = confidence_for(
+                len(successful_sources), aggregate["sample_size"], period_end, today
+            )
+            if confidence_level == "低":
+                conn.commit()
+                logger.info(
+                    "task_insufficient_confidence job_name=%s city=%s source_count=%s sample_size=%s",
+                    job_name,
+                    city,
+                    len(successful_sources),
+                    aggregate["sample_size"],
+                )
+                return {
+                    "status": "insufficient_confidence",
+                    "confidence_level": confidence_level,
+                }
+            primary_snapshot_id, primary_payload = next(
+                (
+                    (snapshot_id, payload)
+                    for snapshot_id, payload in persisted_sources
+                    if payload.get("http_status") == 200 and not payload.get("error_message")
+                ),
+                (None, None),
+            )
+            if primary_snapshot_id is None or primary_payload is None:
+                raise ValueError("中高置信度市场快照缺少成功来源快照")
             snapshot_id = _insert_snapshot(
                 conn,
                 int(job["id"]),
                 job_name,
                 city,
-                source_id,
+                int(primary_payload["source_id"]),
+                primary_snapshot_id,
                 owner_id,
                 reviewer_id,
                 period_start,
                 period_end,
                 next_check_at,
                 aggregate,
-                platform["name"],
-            )
-            content_hash = _content_hash(
-                {"job_name": job_name, "city": city, "period_start": period_start, **aggregate}
-            )
-            conn.execute(
-                """
-                UPDATE intelligence_sources
-                SET last_fetch_at = CURRENT_TIMESTAMP,
-                    last_content_hash = ?,
-                    last_change_status = '已采集',
-                    last_error = '',
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """,
-                (content_hash, source_id),
+                next(
+                    platform["name"]
+                    for platform in approved_platforms
+                    if platform["source_id"] == primary_payload["source_id"]
+                ),
             )
             conn.commit()
         except Exception as exc:
@@ -715,6 +902,7 @@ def crawl_and_store(
         "salary_median": aggregate["salary_median"],
         "salary_max": aggregate["salary_max"],
         "breakdown_count": len(aggregate["breakdowns"]),
+        "confidence_level": confidence_level,
     }
 
 
