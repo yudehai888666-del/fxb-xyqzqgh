@@ -1,8 +1,9 @@
 from datetime import date, timedelta
+import json
 
 from app import employment_repository, repositories
 from app.db import get_db
-from app.services import employment_analysis, student_goals
+from app.services import employment_analysis, intelligence_reports, student_goals
 from tests.employment_factories import (
     advancement_student,
     configured_employment_student,
@@ -311,6 +312,95 @@ def test_shipbuilding_and_computing_workspaces_only_use_reviewed_real_data(tmp_p
     assert "后端开发工程师" in computer_page.get_data(as_text=True)
     assert "真实数据" in ship_page.get_data(as_text=True)
     assert "典型路径，不承诺固定年限、薪资或必然晋升。" in computer_page.get_data(as_text=True)
+
+
+def test_two_family_real_evidence_excludes_test_draft_expired_and_inactive_sources(tmp_path):
+    auth_app = make_auth_app(tmp_path, "two-family-invalid-snapshots")
+    with auth_app.app_context():
+        actor_id = create_login_user("admin", "two-family-invalid-admin")
+        ship_student, _ = create_two_ready_real_market_students(actor_id)
+        target = repositories.list_student_job_targets(ship_student)[0]
+        valid_snapshot = employment_repository.list_market_snapshots(target["job_id"])[0]
+        today = date.today()
+
+        def add_snapshot(marker, classification="真实数据", next_check_at=None, publish=True, source_id=None, source_snapshot_id=None):
+            snapshot_id = employment_repository.create_market_snapshot(
+                {
+                    "job_id": target["job_id"], "region": "大连",
+                    "period_start": (today - timedelta(days=14)).isoformat(),
+                    "period_end": today.isoformat(), "observed_posting_count": 40,
+                    "sample_size": 30, "salary_min": 8000, "salary_median": 10000,
+                    "salary_max": 12000, "source_id": source_id or valid_snapshot["source_id"],
+                    "source_snapshot_id": source_snapshot_id,
+                    "evidence_summary": marker, "limitation_note": "测试快照治理边界",
+                    "data_classification": classification, "owner_user_id": actor_id,
+                    "reviewer_user_id": actor_id,
+                    "next_check_at": next_check_at or (today + timedelta(days=30)).isoformat(),
+                }, [], actor_id,
+            )
+            if publish:
+                employment_repository.submit_market_snapshot(snapshot_id)
+                employment_repository.review_market_snapshot(snapshot_id, "已发布")
+            return snapshot_id
+
+        add_snapshot("TEST_SNAPSHOT_MUST_NOT_APPEAR", classification="测试数据")
+        add_snapshot("DRAFT_SNAPSHOT_MUST_NOT_APPEAR", publish=False,
+                     source_snapshot_id=valid_snapshot["source_snapshot_id"])
+        add_snapshot("EXPIRED_SNAPSHOT_MUST_NOT_APPEAR",
+                     next_check_at=(today - timedelta(days=1)).isoformat(),
+                     source_snapshot_id=valid_snapshot["source_snapshot_id"])
+        inactive_source_id = repositories.create_intelligence_source(
+            {
+                "name": "停用测试来源", "url": "https://example.test/inactive-source",
+                "compliance_note": "已完成公开来源合规审查",
+            },
+            actor_id,
+        )
+        inactive_source_snapshot_id = get_db().execute(
+            """INSERT INTO intelligence_source_snapshots
+               (source_id, http_status, content_hash, content_excerpt, created_by)
+               VALUES (?, 200, 'inactive-source', '停用来源样本', ?)""",
+            (inactive_source_id, actor_id),
+        ).lastrowid
+        add_snapshot("INACTIVE_SOURCE_SNAPSHOT_MUST_NOT_APPEAR",
+                     source_id=inactive_source_id,
+                     source_snapshot_id=inactive_source_snapshot_id)
+        get_db().execute(
+            "UPDATE intelligence_sources SET is_active = 0 WHERE id = ?",
+            (inactive_source_id,),
+        )
+        get_db().commit()
+        requirement = repositories.list_job_skill_requirements(target["job_id"])[0]
+        repositories.upsert_student_skill_assessment(
+            ship_student,
+            {"skill_id": requirement["skill_id"], "current_level": 2, "evidence_note": "课程项目"},
+            actor_id,
+        )
+        employment_repository.upsert_analysis_draft(
+            ship_student,
+            {
+                "suitability_summary": "专业基础匹配", "risk_summary": "项目经验有限",
+                "action_recommendations": "完成工程项目", "limitation_note": "公开招聘样本有限",
+            },
+            actor_id,
+        )
+
+        workspace = employment_analysis.build_workspace(ship_student)
+        positioning = employment_analysis.build_career_positioning(ship_student)
+        report_id = intelligence_reports.generate(ship_student, actor_id)
+        report = employment_repository.get_intelligence_report(report_id)
+        report_payload = json.loads(report["snapshot_json"])
+
+    workspace_evidence = {
+        item["record"]["evidence_summary"] for item in workspace["market_snapshots"]
+    }
+    report_evidence = {
+        item["record"]["evidence_summary"] for item in report_payload["market_snapshots"]
+    }
+    assert workspace_evidence == {"公开招聘岗位样本"}
+    assert [candidate["sample_size"] for candidate in positioning["professional_candidates"]] == [100]
+    assert report["data_classification"] == "真实数据"
+    assert report_evidence == {"公开招聘岗位样本"}
 
 
 def _create_explore_records(app):

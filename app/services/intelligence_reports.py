@@ -59,11 +59,9 @@ def _report_classification(workspace):
     records = [item["record"] for item in workspace["market_snapshots"]]
     if not records:
         return "测试数据"
-    today = datetime.now(timezone.utc).date().isoformat()
     if all(
         row["data_classification"] == "真实数据"
-        and row["status"] == "已发布"
-        and row["next_check_at"] >= today
+        and employment_analysis._is_current_snapshot(row)
         for row in records
     ):
         return "真实数据"

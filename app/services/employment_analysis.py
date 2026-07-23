@@ -44,10 +44,12 @@ def _is_current_snapshot(snapshot):
         next_check_at = date.fromisoformat(snapshot["next_check_at"])
     except (TypeError, ValueError):
         return False
+    source = repositories.get_intelligence_source(snapshot["source_id"])
     return (
         snapshot["status"] == "已发布"
         and snapshot["sample_size"] > 0
         and next_check_at >= date.today()
+        and bool(source and source["is_active"])
     )
 
 
@@ -57,6 +59,15 @@ def _current_market_snapshots(job_id):
         for snapshot in employment_repository.list_market_snapshots(job_id)
         if _is_current_snapshot(snapshot)
     ]
+
+
+def _reference_market_snapshots(job_id):
+    snapshots = _current_market_snapshots(job_id)
+    real_snapshots = [
+        snapshot for snapshot in snapshots
+        if snapshot["data_classification"] == "真实数据"
+    ]
+    return real_snapshots or snapshots
 
 
 def _target_path_mode(target_note):
@@ -179,7 +190,7 @@ def build_workspace(student_id, career_filters=None):
     target_jobs = [row for row in matching["jobs"] if row["job"]["id"] in target_ids]
     snapshots = []
     for job_result in target_jobs:
-        for snapshot in _current_market_snapshots(job_result["job"]["id"]):
+        for snapshot in _reference_market_snapshots(job_result["job"]["id"]):
             snapshots.append({"record": snapshot, "breakdowns": _breakdown_groups(snapshot)})
     all_exam_plans = repositories.list_student_exam_plans(student_id)
     today = date.today().isoformat()
@@ -253,7 +264,7 @@ def report_readiness(student_id):
         ]
         if zero_without_note:
             blocking.append("零级核心技能必须明确记录无证据：" + "、".join(zero_without_note))
-        if not _current_market_snapshots(primary["job_id"]):
+        if not _reference_market_snapshots(primary["job_id"]):
             blocking.append("第一目标缺少已审核且未过期的市场快照")
     draft = employment_repository.get_analysis_draft(student_id)
     for field, label in (
@@ -276,6 +287,6 @@ def report_readiness(student_id):
             continue
         if not repositories.list_job_skill_requirements(target["job_id"]):
             warnings.append(f"第{target['priority']}目标缺少已审核技能关系")
-        if not _current_market_snapshots(target["job_id"]):
+        if not _reference_market_snapshots(target["job_id"]):
             warnings.append(f"第{target['priority']}目标缺少市场快照")
     return {"ready": not blocking, "blocking": blocking, "warnings": warnings}

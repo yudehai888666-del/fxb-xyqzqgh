@@ -4,7 +4,7 @@ import pytest
 
 from app import employment_repository, repositories
 from app.db import get_db
-from app.services import intelligence_reports
+from app.services import employment_analysis, intelligence_reports
 from tests.employment_factories import (
     complete_employment_student,
     create_login_user,
@@ -86,6 +86,25 @@ def test_real_report_freezes_target_path_market_evidence_and_development_directi
         "典型路径，不承诺固定年限、薪资或必然晋升。"
     )
     assert payload["market_snapshots"][0]["record"]["source_snapshot_id"]
+
+
+def test_inactive_source_is_not_current_evidence_or_real_report_data(app):
+    student_id = create_ready_real_market_student(app)
+    with app.app_context():
+        target = repositories.list_student_job_targets(student_id)[0]
+        snapshot = employment_repository.list_market_snapshots(target["job_id"])[0]
+        get_db().execute(
+            "UPDATE intelligence_sources SET is_active = 0 WHERE id = ?",
+            (snapshot["source_id"],),
+        )
+        get_db().commit()
+        workspace = employment_analysis.build_workspace(student_id)
+        assert workspace["market_snapshots"] == []
+        assert intelligence_reports._report_classification({
+            "market_snapshots": [{"record": snapshot}],
+        }) == "测试数据"
+        with pytest.raises(intelligence_reports.ReportNotReady):
+            intelligence_reports.generate(student_id, actor_id=1)
 
 
 def test_report_detail_renders_frozen_real_market_evidence(client, app):
