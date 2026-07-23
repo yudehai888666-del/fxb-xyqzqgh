@@ -55,6 +55,19 @@ APPROVED_PLATFORM_FIELDS = (
     "allowed_public_pages",
     "search_url_template",
 )
+SAFE_ERROR_SUMMARIES = frozenset(
+    {
+        "请求失败",
+        "检测到验证码",
+        "需要登录",
+        "请求过于频繁",
+        "服务暂不可用",
+        "页面响应失败",
+        "页面解析失败",
+        "页面不在批准范围内",
+        "采集失败",
+    }
+)
 
 
 def load_config(config_path: str | Path = CONFIG_PATH) -> dict[str, Any]:
@@ -155,13 +168,33 @@ def _http_get(
         request = Request(url, headers=_build_headers(config))
         with urlopen(request, timeout=15) as response:
             return response.status, response.read().decode("utf-8", errors="ignore"), ""
-    except Exception as exc:  # pragma: no cover - network behavior varies.
-        logger.exception("request_failed url=%s error=%s", url, exc)
-        return 0, "", f"请求失败：{_strip_text(exc)}"
+    except Exception:  # pragma: no cover - network behavior varies.
+        logger.warning("request_failed url=%s category=%s", url, "请求失败")
+        return 0, "", "请求失败"
 
 
 def _strip_text(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def _safe_error_summary(value: Any) -> str:
+    summary = _strip_text(value)
+    if not summary:
+        return ""
+    if summary in SAFE_ERROR_SUMMARIES:
+        return summary
+    for prefix, safe_summary in (
+        ("请求失败", "请求失败"),
+        ("页面解析失败", "页面解析失败"),
+        ("页面需要登录", "需要登录"),
+        ("登录", "需要登录"),
+        ("验证码", "检测到验证码"),
+        ("HTTP 429", "请求过于频繁"),
+        ("HTTP 503", "服务暂不可用"),
+    ):
+        if summary.startswith(prefix):
+            return safe_summary
+    return "采集失败"
 
 
 def _find_first_text(blob: dict[str, Any], keys: tuple[str, ...]) -> str:
@@ -196,8 +229,8 @@ def _parse_json_posts(html: str) -> list[dict[str, str]]:
         for candidate in json_candidates:
             try:
                 data = json.loads(candidate)
-            except Exception:
-                continue
+            except Exception as exc:
+                raise ValueError("malformed embedded JSON") from exc
             for item in _walk_json(data):
                 title = _find_first_text(item, ("title", "jobName", "positionName", "name"))
                 salary = _find_first_text(item, ("salary", "salaryText", "salaryDesc", "compensation"))
@@ -340,10 +373,11 @@ def _capture_payload(
     error_message: str = "",
 ) -> dict[str, Any]:
     raw = html.encode("utf-8")
+    error_summary = _safe_error_summary(error_message)
     excerpt = (
         f"公开岗位列表解析到 {len(page_posts)} 条样本；仅保存聚合采集元数据，不保存职位描述。"
-        if not error_message
-        else f"公开页面采集失败：{error_message[:300]}"
+        if not error_summary
+        else f"公开页面采集失败：{error_summary}"
     )
     return {
         "source_id": source_id,
@@ -352,22 +386,24 @@ def _capture_payload(
         "page_title": _page_title(html),
         "content_excerpt": excerpt,
         "content_bytes": len(raw),
-        "error_message": error_message[:500],
+        "error_message": error_summary,
     }
 
 
 def _page_stop_reason(status_code: int, html: str, request_error: str) -> str:
     if request_error:
-        return request_error
-    if status_code in (429, 503):
-        return f"HTTP {status_code}，停止当前页面采集"
+        return _safe_error_summary(request_error)
+    if status_code == 429:
+        return "请求过于频繁"
+    if status_code == 503:
+        return "服务暂不可用"
     lowered = html.lower()
     if "captcha" in lowered or "验证" in html:
-        return "检测到验证码页面，停止当前页面采集"
+        return "检测到验证码"
     if "login" in lowered or "登录" in html:
-        return "检测到登录页面，停止当前页面采集"
+        return "需要登录"
     if status_code >= 400:
-        return f"HTTP {status_code}，停止当前页面采集"
+        return "页面响应失败"
     return ""
 
 
@@ -394,7 +430,7 @@ def fetch_approved_posts(
                 source_snapshots.append(
                     _capture_payload(
                         platform["source_id"], 0, "", [],
-                        "配置生成了未获批准的公开页面",
+                        "页面不在批准范围内",
                     )
                 )
                 break
@@ -404,8 +440,9 @@ def fetch_approved_posts(
             if not stop_reason:
                 try:
                     page_posts = _parse_posts(html)
-                except Exception as exc:
-                    stop_reason = f"页面解析失败：{_strip_text(exc)}"
+                except Exception:
+                    logger.warning("page_parse_failed url=%s category=%s", url, "页面解析失败")
+                    stop_reason = "页面解析失败"
             source_snapshots.append(
                 _capture_payload(
                     platform["source_id"], status_code, html, page_posts, stop_reason
@@ -631,8 +668,13 @@ def _record_source_snapshot(
     if row is None:
         raise ValueError("source snapshot references an unknown source")
     content_hash = _strip_text(data.get("content_hash"))
-    error_message = _strip_text(data.get("error_message"))[:500]
-    if error_message:
+    error_summary = _safe_error_summary(data.get("error_message"))
+    content_excerpt = (
+        f"公开页面采集失败：{error_summary}"
+        if error_summary
+        else _strip_text(data.get("content_excerpt"))[:500]
+    )
+    if error_summary:
         change_status = "采集失败"
     elif not row["last_content_hash"]:
         change_status = "首次采集"
@@ -652,21 +694,21 @@ def _record_source_snapshot(
             data.get("http_status"),
             content_hash,
             _strip_text(data.get("page_title"))[:200],
-            _strip_text(data.get("content_excerpt"))[:500],
+            content_excerpt,
             int(data.get("content_bytes") or 0),
             int(bool(content_hash and row["last_content_hash"] and content_hash != row["last_content_hash"])),
-            error_message,
+            error_summary,
             created_by,
         ),
     )
-    if error_message:
+    if error_summary:
         conn.execute(
             """
             UPDATE intelligence_sources SET last_fetch_at = CURRENT_TIMESTAMP,
                 last_change_status = ?, last_error = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
             """,
-            (change_status, error_message, data["source_id"]),
+            (change_status, error_summary, data["source_id"]),
         )
     else:
         conn.execute(

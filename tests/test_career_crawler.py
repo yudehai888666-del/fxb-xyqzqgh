@@ -112,10 +112,98 @@ def test_fetch_records_sanitized_error_payload_and_stops_page(monkeypatch):
         "http_status": 429,
         "content_hash": hashlib.sha256(html.encode("utf-8")).hexdigest(),
         "page_title": "公开岗位",
-        "content_excerpt": "公开页面采集失败：HTTP 429，停止当前页面采集",
+        "content_excerpt": "公开页面采集失败：请求过于频繁",
         "content_bytes": len(html.encode("utf-8")),
-        "error_message": "HTTP 429，停止当前页面采集",
+        "error_message": "请求过于频繁",
     }]
+
+
+@pytest.mark.parametrize(
+    ("html", "expected_error"),
+    (
+        ("<html><body>captcha 张三 13800138000</body></html>", "检测到验证码"),
+        ("<html><body>请先登录 张三 13800138000</body></html>", "需要登录"),
+    ),
+)
+def test_fetch_stops_for_captcha_or_login_with_category_only_error(
+    monkeypatch, html, expected_error
+):
+    crawler = importlib.import_module("scripts.career_crawler")
+    calls = []
+    platform = next(platform for platform in crawler.load_config()["platforms"] if platform["enabled"])
+
+    def fake_get(url, config, logger):
+        calls.append(url)
+        return 200, html, ""
+
+    monkeypatch.setattr(crawler, "_http_get", fake_get)
+    posts, payloads = crawler.fetch_approved_posts(
+        "后端开发工程师",
+        "上海",
+        3,
+        crawler.load_config(),
+        logging.getLogger("test_crawler"),
+        [{**platform, "source_id": 7}],
+    )
+
+    assert posts == []
+    assert len(calls) == 1
+    assert payloads[0]["error_message"] == expected_error
+    assert payloads[0]["content_excerpt"] == f"公开页面采集失败：{expected_error}"
+    assert "张三" not in payloads[0]["content_excerpt"]
+    assert "13800138000" not in payloads[0]["content_excerpt"]
+
+
+def test_fetch_stops_after_malformed_embedded_json(monkeypatch):
+    crawler = importlib.import_module("scripts.career_crawler")
+    calls = []
+    platform = next(platform for platform in crawler.load_config()["platforms"] if platform["enabled"])
+
+    def fake_get(url, config, logger):
+        calls.append(url)
+        return 200, "<script>{\"jobs\": [}</script>", ""
+
+    monkeypatch.setattr(crawler, "_http_get", fake_get)
+    monkeypatch.setattr(crawler.time, "sleep", lambda *_args: None)
+    posts, payloads = crawler.fetch_approved_posts(
+        "后端开发工程师",
+        "上海",
+        3,
+        crawler.load_config(),
+        logging.getLogger("test_crawler"),
+        [{**platform, "source_id": 7}],
+    )
+
+    assert posts == []
+    assert len(calls) == 1
+    assert payloads[0]["error_message"] == "页面解析失败"
+    assert payloads[0]["content_excerpt"] == "公开页面采集失败：页面解析失败"
+
+
+def test_crawl_never_persists_request_error_details(app, monkeypatch):
+    crawler = importlib.import_module("scripts.career_crawler")
+    admin_id, _job_id, db_path = _published_job(app, name="错误脱敏测试岗位")
+    source_id = _approved_source(app, admin_id, crawler)
+    sensitive_error = "请求失败：张三电话 13800138000"
+    monkeypatch.setattr(crawler, "_http_get", lambda *_args: (0, "", sensitive_error))
+
+    result = crawler.crawl_and_store(
+        "错误脱敏测试岗位",
+        city="上海",
+        db_path=db_path,
+        owner_user_id=admin_id,
+        reviewer_user_id=admin_id,
+    )
+
+    assert result == {"status": "insufficient_confidence", "confidence_level": "低"}
+    with sqlite3.connect(db_path) as db:
+        row = db.execute(
+            "SELECT content_excerpt, error_message FROM intelligence_source_snapshots WHERE source_id = ?",
+            (source_id,),
+        ).fetchone()
+    assert row == ("公开页面采集失败：请求失败", "请求失败")
+    assert "张三" not in " ".join(row)
+    assert "13800138000" not in " ".join(row)
 
 
 def test_crawl_writes_real_draft_linked_to_source_snapshot(app, monkeypatch):
@@ -218,7 +306,7 @@ def test_low_confidence_saves_source_snapshots_without_market_draft(app, monkeyp
             "SELECT error_message FROM intelligence_source_snapshots WHERE source_id = ?",
             (source_id,),
         ).fetchone()
-        assert snapshot[0] == "页面需要登录"
+        assert snapshot[0] == "需要登录"
         assert db.execute("SELECT COUNT(*) FROM employment_market_snapshots").fetchone()[0] == 0
 
 
