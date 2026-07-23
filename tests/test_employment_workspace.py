@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from app import employment_repository, repositories
 from app.db import get_db
 from app.services import employment_analysis, student_goals
@@ -211,6 +213,104 @@ def test_professional_target_rejects_job_outside_ranked_candidates(tmp_path):
         data={"job_id": outside_job_id, "priority": 1, "path_mode": "专业推荐"},
     )
     assert response.status_code == 400
+
+
+def create_two_ready_real_market_students(actor_id):
+    today = date.today()
+    period_start = (today - timedelta(days=21)).isoformat()
+    period_end = (today - timedelta(days=1)).isoformat()
+    last_verified_at = (today - timedelta(days=7)).isoformat()
+    next_check_at = (today + timedelta(days=60)).isoformat()
+    source_id = create_source(actor_id)
+    source_snapshot_id = get_db().execute(
+        """INSERT INTO intelligence_source_snapshots
+           (source_id, http_status, content_hash, content_excerpt, created_by)
+           VALUES (?, 200, 'two-family-source', '公开岗位样本摘要', ?)""",
+        (source_id, actor_id),
+    ).lastrowid
+    get_db().execute(
+        """UPDATE intelligence_sources
+           SET compliance_note = '已完成公开来源合规审查', is_active = 1
+           WHERE id = ?""",
+        (source_id,),
+    )
+    students = []
+    for major_name, job_name, skill_name, city in (
+        ("船舶与海洋工程", "船舶设计工程师", "三维船舶设计", "大连"),
+        ("计算机科学与技术", "后端开发工程师", "Python", "上海"),
+    ):
+        major_id = repositories.create_knowledge_major({"name": major_name}, actor_id)
+        repositories.update_knowledge_status("major", major_id, "已发布")
+        job_id, skill_id = create_published_job_and_skill(job_name, skill_name)
+        get_db().execute(
+            """UPDATE knowledge_jobs SET development_direction = ? WHERE id = ?""",
+            (f"{job_name}的项目能力与专业协同发展。典型路径，不承诺固定年限、薪资或必然晋升。", job_id),
+        )
+        repositories.create_major_job_link(
+            {
+                "major_id": major_id, "job_id": job_id, "relevance_level": "高度相关",
+                "evidence_note": "已审核专业关联证据",
+            },
+            actor_id,
+        )
+        link_id = repositories.create_job_skill_link(
+            {
+                "job_id": job_id, "skill_id": skill_id, "importance_level": "核心",
+                "evidence_note": "已审核岗位技能证据", "source_id": source_id,
+                "confidence_level": "高", "sample_size": 100,
+                "last_verified_at": last_verified_at, "next_check_at": next_check_at,
+                "owner_user_id": actor_id, "reviewer_user_id": actor_id,
+                "limitation_note": "公开招聘样本有限",
+            },
+            actor_id,
+        )
+        repositories.submit_job_skill_link(link_id)
+        repositories.review_job_skill_link(link_id, "已发布")
+        snapshot_id = employment_repository.create_market_snapshot(
+            {
+                "job_id": job_id, "region": city, "period_start": period_start,
+                "period_end": period_end, "observed_posting_count": 130,
+                "sample_size": 100, "salary_min": 9000, "salary_median": 12000,
+                "salary_max": 15000, "source_id": source_id,
+                "source_snapshot_id": source_snapshot_id,
+                "evidence_summary": "公开招聘岗位样本",
+                "limitation_note": "当前招聘样本，非全市场",
+                "data_classification": "真实数据", "owner_user_id": actor_id,
+                "reviewer_user_id": actor_id, "next_check_at": next_check_at,
+            }, [], actor_id,
+        )
+        employment_repository.submit_market_snapshot(snapshot_id)
+        employment_repository.review_market_snapshot(snapshot_id, "已发布")
+        student_id = student_goals.create_student_with_goal(
+            {
+                "name": f"{major_name}就业学生", "gender": "女", "enrollment_year": 2024,
+                "current_term": "大二下", "school": "示例大学", "college": "测试学院",
+                "major": major_name, "city": city, "responsible_teacher": "测试老师",
+            },
+            {"primary_goal": "就业", "alternate_goal": "升学", "decision_reason": "职业定位测试"},
+            actor_id,
+        )
+        repositories.upsert_student_job_target(
+            student_id, {"job_id": job_id, "priority": 1, "target_note": "路径：专业推荐"}, actor_id
+        )
+        students.append(student_id)
+    get_db().commit()
+    return students
+
+
+def test_shipbuilding_and_computing_workspaces_only_use_reviewed_real_data(tmp_path):
+    auth_app = make_auth_app(tmp_path, "two-family-workspace")
+    client = auth_app.test_client()
+    with auth_app.app_context():
+        actor_id = create_login_user("admin", "two-family-admin")
+        ship_student, computer_student = create_two_ready_real_market_students(actor_id)
+    login(client, "two-family-admin")
+    ship_page = client.get(f"/students/{ship_student}/employment?tab=targets")
+    computer_page = client.get(f"/students/{computer_student}/employment?tab=targets")
+    assert "船舶设计工程师" in ship_page.get_data(as_text=True)
+    assert "后端开发工程师" in computer_page.get_data(as_text=True)
+    assert "真实数据" in ship_page.get_data(as_text=True)
+    assert "典型路径，不承诺固定年限、薪资或必然晋升。" in computer_page.get_data(as_text=True)
 
 
 def _create_explore_records(app):
