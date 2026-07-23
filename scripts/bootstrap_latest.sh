@@ -36,7 +36,14 @@ if ! git remote get-url origin >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+LOCAL_RUNTIME_PATHS=(
+  ':(exclude)logs/**'
+  ':(exclude).worktrees/**'
+  ':(exclude)docs/superpowers/plans/**'
+)
+UNTRACKED_CHANGES="$(git ls-files --others --exclude-standard -- . "${LOCAL_RUNTIME_PATHS[@]}")"
+
+if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$UNTRACKED_CHANGES" ]]; then
   echo "已停止：当前目录有未提交或未跟踪改动。" >&2
   echo "请先提交、暂存或移走这些改动，再重新执行：" >&2
   echo "  ./scripts/bootstrap_latest.sh ${BRANCH}" >&2

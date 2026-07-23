@@ -1,4 +1,5 @@
 import os
+import shutil
 import stat
 import subprocess
 from pathlib import Path
@@ -70,6 +71,55 @@ def test_desktop_launchers_run_recovery_before_starting():
     assert "./scripts/start_public.sh" in public_launcher
     assert "启动学业规划.command" in readme
     assert "启动学业规划-公网.command" in readme
+
+
+def test_bootstrap_allows_generated_local_directories(tmp_path):
+    remote = tmp_path / "remote.git"
+    source = tmp_path / "source"
+    checkout = tmp_path / "checkout"
+
+    subprocess.run(["git", "init", "--bare", str(remote)], check=True)
+    subprocess.run(["git", "init", "-b", "main", str(source)], check=True)
+    (source / "scripts").mkdir()
+    shutil.copy(ROOT / "scripts" / "bootstrap_latest.sh", source / "scripts")
+    (source / "README.md").write_text("fixture\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(source), "add", "."], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(source),
+            "-c",
+            "user.name=test",
+            "-c",
+            "user.email=test@example.com",
+            "commit",
+            "-m",
+            "fixture",
+        ],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(source), "remote", "add", "origin", str(remote)], check=True
+    )
+    subprocess.run(["git", "-C", str(source), "push", "-u", "origin", "main"], check=True)
+    subprocess.run(["git", "clone", str(remote), str(checkout)], check=True)
+
+    (checkout / "logs").mkdir()
+    (checkout / ".worktrees").mkdir()
+    plan = checkout / "docs" / "superpowers" / "plans"
+    plan.mkdir(parents=True)
+    (plan / "local-plan.md").write_text("local only\n", encoding="utf-8")
+
+    result = subprocess.run(
+        ["bash", "scripts/bootstrap_latest.sh", "main"],
+        cwd=checkout,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "已恢复到 Git 仓库保存的最新 main" in result.stdout
 
 
 def test_launch_scripts_display_login_credentials():
